@@ -1,0 +1,77 @@
+{
+  "updatedAt": "2025-10-30T16:58:36.000Z",
+  "createdAt": "2025-10-30T15:51:08.112Z",
+  "id": "VrPlRV2d0vTo5DOa",
+  "name": "My workflow 72",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fd60f748-5ec2-439c-a83a-736e562daffb",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "Envibol",
+        "remoteJid": "59172896612",
+        "messageText": "Es una prueba",
+        "options_message": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e9b625c7-429f-4202-b054-676dac560f87",
+      "name": "Enviar texto",
+      "credentials": {
+        "evolutionApi": {
+          "id": "W1x347goQjF9uCPr",
+          "name": "Envibol"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Enviar texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "8668e45f-3107-4cb8-b652-37a1e240672b",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-30T15:51:08.117Z",
+      "createdAt": "2025-10-30T15:51:08.117Z",
+      "role": "workflow:owner",
+      "workflowId": "VrPlRV2d0vTo5DOa",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

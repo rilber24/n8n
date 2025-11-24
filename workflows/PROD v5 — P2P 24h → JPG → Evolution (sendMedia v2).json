@@ -1,0 +1,202 @@
+{
+  "updatedAt": "2025-09-30T21:58:47.000Z",
+  "createdAt": "2025-09-30T21:52:33.972Z",
+  "id": "26sPecun3nftsuff",
+  "name": "PROD v5 — P2P 24h → JPG → Evolution (sendMedia v2)",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8a0f2d33-b507-4803-b441-b9084704a389",
+      "name": "▶️ Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javascript"
+      },
+      "id": "62309cd2-9419-4cef-a401-8ecb68c85db0",
+      "name": "⚙️ Params (ventana 24h)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'Compra' AS serie, fecha_hora, precio\nFROM compra_bob\nWHERE fecha_hora >= '{{$json[\"startLocal\"]}}'\n  AND fecha_hora <= '{{$json[\"endLocal\"]}}'\nUNION ALL\nSELECT 'Venta'  AS serie, fecha_hora, precio\nFROM venta_bob\nWHERE fecha_hora >= '{{$json[\"startLocal\"]}}'\n  AND fecha_hora <= '{{$json[\"endLocal\"]}}'\nORDER BY fecha_hora ASC;",
+        "options": {}
+      },
+      "id": "57a363a6-27e0-4d37-be3c-e28b0b96eb0e",
+      "name": "🗄️ MySQL — serie 24h",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        368
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javascript"
+      },
+      "id": "34613705-5418-4a6a-837f-3af910018f10",
+      "name": "🎨 Build Chart.js (24h estilo)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://quickchart.io/chart",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { format: 'jpg', backgroundColor: 'white', width: 1200, height: 600, chart: $json['chartConfig'], version: '4.4.0' } }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "8d2de889-f79f-4d7b-a73b-b0593520645f",
+      "name": "🖼️ QuickChart → JPG (binario)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -176,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "fileName": "reporte_p2p_24h.jpg",
+        "options": {}
+      },
+      "id": "9c81388c-8724-417e-975b-e1bd893e2642",
+      "name": "💾 Guardar JPG (opcional)",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        80,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://hooks.ril.serviciocliente.site/message/sendMedia/mm",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { number: 'TO_NUMBER', mediatype: 'image', mimetype: 'image/jpeg', caption: $node['🎨 Build Chart.js (24h estilo)'].json.caption, media: $binary.data.data, fileName: 'reporte_p2p_24h.jpg' } }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "258e6b46-655d-48a4-a417-eb34b1e0d5b1",
+      "name": "📤 Evolution — HTTP (sendMedia v2)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        80,
+        368
+      ]
+    }
+  ],
+  "connections": {
+    "▶️ Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Params (ventana 24h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Params (ventana 24h)": {
+      "main": [
+        [
+          {
+            "node": "🗄️ MySQL — serie 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🗄️ MySQL — serie 24h": {
+      "main": [
+        [
+          {
+            "node": "🎨 Build Chart.js (24h estilo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎨 Build Chart.js (24h estilo)": {
+      "main": [
+        [
+          {
+            "node": "🖼️ QuickChart → JPG (binario)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🖼️ QuickChart → JPG (binario)": {
+      "main": [
+        [
+          {
+            "node": "📤 Evolution — HTTP (sendMedia v2)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "💾 Guardar JPG (opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "b6c2f748-4e1a-415b-897b-1a43a2c7cb8d",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-30T21:52:33.980Z",
+      "createdAt": "2025-09-30T21:52:33.980Z",
+      "role": "workflow:owner",
+      "workflowId": "26sPecun3nftsuff",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

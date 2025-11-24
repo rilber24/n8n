@@ -1,0 +1,75 @@
+{
+  "updatedAt": "2025-10-08T02:27:05.000Z",
+  "createdAt": "2025-10-08T02:25:00.645Z",
+  "id": "WcbB0p7yqifjwO9l",
+  "name": "My workflow 62",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "12391c2a-05d3-497d-8615-d96ccb8cca5e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM elecciones",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "03c9caa9-07d0-4182-bda8-1d96ef924bfe",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "bXghImYW2Dg1lKZR",
+          "name": "Postgres account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "8744e1c7-9c98-4c67-a90a-413fedb00d6b",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-08T02:25:00.648Z",
+      "createdAt": "2025-10-08T02:25:00.648Z",
+      "role": "workflow:owner",
+      "workflowId": "WcbB0p7yqifjwO9l",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

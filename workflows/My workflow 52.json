@@ -1,0 +1,209 @@
+{
+  "updatedAt": "2025-09-24T14:52:58.000Z",
+  "createdAt": "2025-09-24T02:22:20.515Z",
+  "id": "EOQGWUY5hJQYl6Ak",
+  "name": "My workflow 52",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "3bc3a61c-4919-4194-9a8a-0ad7f43412b3",
+      "name": "Cron - cada 15 min",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1216,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  lc.precio AS compra_ahora,\n  pc.precio AS compra_prev,\n  lv.precio AS venta_ahora,\n  pv.precio AS venta_prev,\n  lc.fecha_hora AS compra_ahora_ts,\n  lv.fecha_hora AS venta_ahora_ts,\n  NOW() AS fecha_consulta\nFROM\n  (SELECT fecha_hora, precio FROM compra_bob ORDER BY fecha_hora DESC LIMIT 1) lc,\n  (SELECT precio FROM compra_bob WHERE fecha_hora < (SELECT fecha_hora FROM compra_bob ORDER BY fecha_hora DESC LIMIT 1) ORDER BY fecha_hora DESC LIMIT 1) pc,\n  (SELECT fecha_hora, precio FROM venta_bob  ORDER BY fecha_hora DESC LIMIT 1) lv,\n  (SELECT precio FROM venta_bob  WHERE fecha_hora < (SELECT fecha_hora FROM venta_bob  ORDER BY fecha_hora DESC LIMIT 1) ORDER BY fecha_hora DESC LIMIT 1) pv;"
+      },
+      "id": "71bbe3e5-f817-45de-9ec7-cbdd647dbe1d",
+      "name": "MySQL - Últimos y Previos",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        224
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"alerta\"]}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "e376bfcb-8ae7-41d0-9a7b-e382fe01bfac",
+      "name": "IF - ¿Hay alerta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO p2p_alertas_log (\n  fecha_evento, compra_now, compra_prev, venta_now, venta_prev,\n  delta_compra, delta_venta, umbral, mensaje\n) VALUES (\n  '{{$json[\"fecha_evento\"].substring(0,19).replace(\"T\",\" \")}}',\n  {{$json[\"compra_now\"]}},\n  {{$json[\"compra_prev\"]}},\n  {{$json[\"venta_now\"]}},\n  {{$json[\"venta_prev\"]}},\n  {{$json[\"delta_compra\"]}},\n  {{$json[\"delta_venta\"]}},\n  {{$json[\"umbral\"]}},\n  '{{$json[\"alerta\"]}}'\n);"
+      },
+      "id": "f9bfe217-0432-433e-b718-3a866a9b7bac",
+      "name": "MySQL - Registrar alerta",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        160
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/PHONE_NUMBER_ID/messages",
+        "options": {}
+      },
+      "id": "8df38ec1-77ac-448a-8ceb-4dead27877dd",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -448,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const THRESHOLD_ABS = 0.01; // USD\n\nconst r = items[0].json;\nconst compra_now = parseFloat(r.compra_ahora);\nconst compra_prev = parseFloat(r.compra_prev);\nconst venta_now  = parseFloat(r.venta_ahora);\nconst venta_prev = parseFloat(r.venta_prev);\n\nconst delta_compra = +(compra_now - compra_prev).toFixed(4);\nconst delta_venta  = +(venta_now  - venta_prev ).toFixed(4);\n\nlet mensajes = [];\nif (Math.abs(delta_compra) >= THRESHOLD_ABS) {\n  mensajes.push(`${delta_compra >= 0 ? '⬆️' : '⬇️'} Cambio COMPRA ${delta_compra >= 0 ? 'alza' : 'baja'}: ${compra_prev} → ${compra_now} (Δ ${delta_compra})`);\n}\nif (Math.abs(delta_venta) >= THRESHOLD_ABS) {\n  mensajes.push(`${delta_venta >= 0 ? '⬆️' : '⬇️'} Cambio VENTA ${delta_venta >= 0 ? 'alza' : 'baja'}: ${venta_prev} → ${venta_now} (Δ ${delta_venta})`);\n}\n\nconst alerta = mensajes.length ? mensajes.join('\\n') : null;\n\nreturn [{\n  alerta,\n  umbral: THRESHOLD_ABS,\n  compra_now, compra_prev,\n  venta_now,  venta_prev,\n  delta_compra, delta_venta,\n  fecha_evento: r.fecha_consulta\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        224
+      ],
+      "id": "553d2318-62c7-4971-87ec-f0f97ee2c80a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "mm",
+        "remoteJid": "59172896612",
+        "options_message": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        336
+      ],
+      "id": "eb1a8785-2e40-41b7-8a9f-162f2f3ac92a",
+      "name": "Enviar texto",
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "Evolution account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "IF - ¿Hay alerta?": {
+      "main": [
+        [
+          {
+            "node": "MySQL - Registrar alerta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron - cada 15 min": {
+      "main": [
+        [
+          {
+            "node": "MySQL - Últimos y Previos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL - Últimos y Previos": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "IF - ¿Hay alerta?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "b18f5e25-f344-4a83-afdb-b5b6d3fb5944",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-09-24T02:22:20.523Z",
+      "createdAt": "2025-09-24T02:22:20.523Z",
+      "role": "workflow:owner",
+      "workflowId": "EOQGWUY5hJQYl6Ak",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

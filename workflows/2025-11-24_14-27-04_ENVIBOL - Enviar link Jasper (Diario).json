@@ -1,0 +1,194 @@
+{
+  "updatedAt": "2025-10-21T21:48:28.000Z",
+  "createdAt": "2025-10-20T13:43:44.844Z",
+  "id": "19rhl0BILb5kFpkj",
+  "name": "ENVIBOL - Enviar link Jasper (Diario)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "00a960bd-8509-4305-9a20-52cc6dec4c73",
+      "name": "Disparador manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        176,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "MJde5DqJ5pIBpGx7",
+          "mode": "list",
+          "cachedResultName": "Despachos",
+          "cachedResultUrl": "/projects/DLCF6dMNvaWDIOVx/datatables/MJde5DqJ5pIBpGx7"
+        }
+      },
+      "id": "7e835b65-bfff-45f0-ac2c-891496598770",
+      "name": "Get row(s) - Despachos",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        416,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Genera mensaje + link Jasper para 06/03/2025 y normaliza números\nDEFAULT_CC = '591'\n\ndef only_digits(s: str) -> str:\n    return ''.join(ch for ch in str(s) if ch.isdigit())\n\nitems_in = _input.all()\nif not items_in:\n    return []\n\n# Fecha fija solicitada\nfecha = '2025-10-18'\nfecha_legible = '18/10/2025'\nlink = f'http://sisub.subsidio.gob.bo:9090/jasperserver/rest_v2/reports/reports/ENVIBOL/REPORTES_DIARIOS/RESUMEN_DE_DESPACHOS.pdf?fechaIni={fecha}&fechaFin={fecha}&j_username=sedem&j_password=123456789'\n\nsalida = []\nfor item in items_in:\n    nombre = item.json.get('Nombre') or item.json.get('nombre', '')\n    numero = only_digits(item.json.get('numero', ''))\n    if numero.startswith(('6', '7')):\n        numero = DEFAULT_CC + numero\n\n    texto = (\n        f'📦 *Reporte Diario de Despachos* ({fecha_legible})\\n\\n'\n        f'👋 Hola *{nombre}*,\\n\\n'\n        f'🔗 Descargar: {link}\\n\\n'\n        f'Atentamente,\\n*ENVIBOL* 🏭'\n    )\n\n    salida.append({'json': {'number': numero, 'text': texto, 'link': link}})\n\nreturn salida"
+      },
+      "id": "efb91e2e-b7de-48e6-8a7f-3fa24633ac92",
+      "name": "Formatear mensaje (Python)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "a28b3796-203d-47cd-b1ba-d20f76f253e9",
+      "name": "Split por registro",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        880,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-document",
+        "instanceName": "mm",
+        "remoteJid": "={{ $json.number }}",
+        "media": "={{ $json.link }}",
+        "caption": "Reporte Diario de Despachos (06/03/2025)",
+        "fileName": "DESPACHOS_DIARIOS.pdf",
+        "options_message": {}
+      },
+      "id": "8ca188c5-c5dd-45be-be8a-f3786410cd26",
+      "name": "Enviar texto (Evolution)",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        848
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "mmmmm"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "9e032f81-0a07-4e18-b017-4253e8a155c0",
+      "name": "Continuar lote",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        848
+      ]
+    }
+  ],
+  "connections": {
+    "Disparador manual": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) - Despachos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) - Despachos": {
+      "main": [
+        [
+          {
+            "node": "Formatear mensaje (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear mensaje (Python)": {
+      "main": [
+        [
+          {
+            "node": "Split por registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split por registro": {
+      "main": [
+        [
+          {
+            "node": "Enviar texto (Evolution)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar texto (Evolution)": {
+      "main": [
+        [
+          {
+            "node": "Continuar lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continuar lote": {
+      "main": [
+        [
+          {
+            "node": "Split por registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "d8d872cb-18e7-4cc0-9285-7c1c00cde993",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-20T13:43:44.854Z",
+      "createdAt": "2025-10-20T13:43:44.854Z",
+      "role": "workflow:owner",
+      "workflowId": "19rhl0BILb5kFpkj",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

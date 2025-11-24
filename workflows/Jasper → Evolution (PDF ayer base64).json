@@ -1,0 +1,110 @@
+{
+  "updatedAt": "2025-10-15T22:55:53.725Z",
+  "createdAt": "2025-10-15T22:55:53.725Z",
+  "id": "IoLTywZie68ckNGz",
+  "name": "Jasper → Evolution (PDF ayer base64)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "26b244a2-d6e9-4513-aa72-15f680056780",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "fecha",
+              "value": "={{$now.setZone('America/La_Paz').minus({ days: 1 }).toFormat('yyyy-LL-dd')}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fcca6cab-960a-49ed-84ec-249ee99f5fa6",
+      "name": "Set Fecha Ayer",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://sisub.subsidio.gob.bo:9090/jasperserver/rest_v2/reports/reports/ENVIBOL/REPORTES_DIARIOS/RESUMEN_DE_DESPACHOS.pdf",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b98170c-9d76-48e8-b639-a1b1cff11697",
+      "name": "Descargar PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        384,
+        -16
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Fecha Ayer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Fecha Ayer": {
+      "main": [
+        [
+          {
+            "node": "Descargar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar PDF": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "9400dd5b-b153-4a20-ba0e-49818b968241",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-15T22:55:53.729Z",
+      "createdAt": "2025-10-15T22:55:53.729Z",
+      "role": "workflow:owner",
+      "workflowId": "IoLTywZie68ckNGz",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

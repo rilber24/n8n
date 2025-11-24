@@ -1,0 +1,282 @@
+{
+  "updatedAt": "2025-09-05T02:28:56.000Z",
+  "createdAt": "2025-09-05T02:28:07.118Z",
+  "id": "8FszYkIeyJpWeXB3",
+  "name": "My workflow 25",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0b18ff35-b486-4c55-86c3-3f3b9ad16385",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://apirrhh.envibol.site/api/v1/N8n/GetUnidad/3",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "4097c93a-4a9d-4089-a633-ca8677907c3b",
+      "name": "GET Unidad 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -944,
+        240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d8cbc851-7088-4159-a53f-35401828fedd",
+      "name": "Function: Normaliza + Config",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isValidBo }}",
+              "value2": true
+            },
+            {
+              "value1": "={{ $json.isQuietNow }}",
+              "operation": "isFalse"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bfbc7e1d-e1d5-47d6-8003-51839d4795b3",
+      "name": "IF válido & horario",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.safeMode }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "751d4fa2-68ac-4896-a0e9-f706856ce41a",
+      "name": "IF SAFE_MODE",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        128
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f3b16d3f-1920-48ed-8eb5-cbf2b0d30732",
+      "name": "Function: Preview",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EV_BASE_URL }}/message/text",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "819f1e27-8823-47e1-a74b-4d70ccc5f09f",
+      "name": "POST Preview a Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "={{ $json.batchSize }}",
+        "options": {}
+      },
+      "id": "fa9b3882-619b-426c-a384-c48bb57d547f",
+      "name": "SplitInBatches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        384
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "767292b8-cd65-46f4-a2fb-972980b5b8f5",
+      "name": "Function: TestLimit",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        32,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.waitSec }}",
+        "unit": "seconds"
+      },
+      "id": "3dc5d712-01dc-4d7a-9071-66ee99a4d7ee",
+      "name": "Wait (por item)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        224,
+        384
+      ],
+      "webhookId": "9f8f02f8-707f-4740-ac0c-8a8fa85a7879"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EV_BASE_URL }}/message/text",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "87dcc664-76ad-464d-80ed-490ec764f682",
+      "name": "POST Evolution /message/text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.sleepBatchSec }}",
+        "unit": "seconds"
+      },
+      "id": "60552a63-33c6-4a0e-a6c0-95d695b94bd6",
+      "name": "Wait (entre lotes)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        624,
+        384
+      ],
+      "webhookId": "9b1c8b78-3552-4b5c-a0b7-4369f88c2e5b"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "GET Unidad 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF válido & horario": {
+      "main": [
+        [
+          {
+            "node": "IF SAFE_MODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF SAFE_MODE": {
+      "main": [
+        [],
+        [
+          {
+            "node": "SplitInBatches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (por item)": {
+      "main": [
+        [
+          {
+            "node": "POST Evolution /message/text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Evolution /message/text": {
+      "main": [
+        [
+          {
+            "node": "Wait (entre lotes)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "595b804b-9539-43cc-a7ae-9fc0e5f47f69",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-05T02:28:07.124Z",
+      "createdAt": "2025-09-05T02:28:07.124Z",
+      "role": "workflow:owner",
+      "workflowId": "8FszYkIeyJpWeXB3",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

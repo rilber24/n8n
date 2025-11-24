@@ -1,0 +1,155 @@
+{
+  "updatedAt": "2025-11-11T14:49:47.000Z",
+  "createdAt": "2025-10-21T02:58:11.768Z",
+  "id": "IYmoPExYg7v9Se6D",
+  "name": "COMERCIAL",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "TkqX6qv1yJFUU8wA",
+          "mode": "list",
+          "cachedResultName": "comercial_pag",
+          "cachedResultUrl": "/projects/DLCF6dMNvaWDIOVx/datatables/TkqX6qv1yJFUU8wA"
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f062ad4d-7d16-4c32-a218-fa62e8374f44",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mode: Run Once for All Items\n\n// --- Lista fija de páginas (links intactos) ---\nconst paginas = [\n  { titulo: \"Botellas y tarros de vidrio - Salta, Argentina\", url: \"https://www.facebook.com/profile.php?id=100091291448631\" },\n  { titulo: \"Garrafas e potes de vidro - Brasil\",              url: \"https://www.facebook.com/profile.php?id=100091406283704\" },\n  { titulo: \"Botellas y Frascos de Vidrio - Iquique, Chile\",   url: \"https://www.facebook.com/profile.php?id=100094487298413\" },\n  { titulo: \"Botellas y Frascos de Vidrio Asunción - Paraguay\",url: \"https://www.facebook.com/profile.php?id=61550748570963\" },\n  { titulo: \"Potes e Garrafas de vidro - São Paulo Brasil\",    url: \"https://www.facebook.com/profile.php?id=61551180358907\" },\n];\n\n// --- Validación: solo números con 591 + 8 dígitos (total 11) ---\nconst validarBolivia = (n) => {\n  const d = String(n ?? \"\").replace(/\\D/g, \"\");  // deja solo dígitos\n  // Acepta SOLO si ya viene con 591 al inicio y tiene 11 dígitos exactos\n  return (d.startsWith(\"591\") && d.length === 11) ? d : null;\n};\n\n// Emojis 1️⃣ 2️⃣ ...\nconst numEmoji = (i) => [\"1️⃣\",\"2️⃣\",\"3️⃣\",\"4️⃣\",\"5️⃣\",\"6️⃣\",\"7️⃣\",\"8️⃣\",\"9️⃣\",\"🔟\"][i] || `${i+1}-`;\n\n// Bloque común con enlaces\nconst bloqueLinks = paginas\n  .map((p, i) => `${numEmoji(i)} ${p.titulo}\\n🔗 ${p.url}`)\n  .join(\"\\n\\n\");\n\nconst plantillaComun =\n`🌐✨ ¡Visita páginas de FACEBOOK!\n\n⏱️ Dedícale 1 hora a las siguientes páginas:\n.......................................................\n${bloqueLinks}\n.......................................................\n💡 Sugerencia: comenta, reacciona y comparte al menos 2 publicaciones en cada página para aumentar el alcance. 🚀`;\n\n// Genera un item por destinatario válido (con 591)\nconst out = [];\nfor (const it of $input.all()) {\n  const nombre = (it.json?.nombre || \"amig@\").trim();\n  const numeroValido = validarBolivia(it.json?.numero);\n\n  if (!numeroValido) {\n    // Excluye (no pusheamos nada)\n    continue;\n  }\n\n  const texto = `Hola ${nombre} 👋\\n\\n${plantillaComun}`;\n\n  out.push({\n    json: {\n      number: numeroValido, // 591#########\n      text: texto,\n      nombre,\n    },\n  });\n}\n\n// Si nadie pasó la validación, devolvemos un aviso para depurar\nif (out.length === 0) {\n  return [{ json: { warning: \"No hay destinatarios válidos: se requiere prefijo 591 y 11 dígitos exactos.\" } }];\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "0305a3c1-252d-4b57-bdfa-8b1caeb25b9b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "dsb",
+        "remoteJid": "={{ $json.number }}",
+        "messageText": "={{ $json.text }}",
+        "options_message": {
+          "delay": 15000
+        }
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "7881aba3-14e3-4f5e-9406-271c4c0831e4",
+      "name": "Enviar texto",
+      "credentials": {
+        "evolutionApi": {
+          "id": "XJQVidx6LSBrYrny",
+          "name": "Dsbolivia"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "triggerAtHour": 8,
+              "triggerAtMinute": 38
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        0
+      ],
+      "id": "874a5a5c-3bea-4bca-840e-c4cb865c897a",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Enviar texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "eb1128ac-20df-4d5c-b19c-78f29a32dd6d",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-10-21T02:58:11.772Z",
+      "createdAt": "2025-10-21T02:58:11.772Z",
+      "role": "workflow:owner",
+      "workflowId": "IYmoPExYg7v9Se6D",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

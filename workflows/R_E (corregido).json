@@ -1,0 +1,549 @@
+{
+  "updatedAt": "2025-10-15T15:31:40.000Z",
+  "createdAt": "2025-10-15T00:04:57.499Z",
+  "id": "R4uun3qwnMKnavKj",
+  "name": "R_E (corregido)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9a04d228-8867-4d02-add5-0160c927094d",
+      "name": "Disparador manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        304,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  ciudadano_id,\n  fecha_creacion,\n  nombre,\n  apellido_paterno,\n  apellido_materno,\n  telefono,\n  correo,\n  nummesa,\n  municipio,\n  asiento_electoral,\n  nombre_recinto,\n  distrito\nFROM public.vw_ciudadano_recinto\nLIMIT 100;",
+        "options": {}
+      },
+      "id": "393c1001-bb36-43b4-8e4b-70ea210d3a9e",
+      "name": "Postgres: SELECT elecciones",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        576,
+        48
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "bXghImYW2Dg1lKZR",
+          "name": "Postgres account 3"
+        }
+      },
+      "notes": "Selecciona tu credencial 'Cuenta de Postgres 3' al importar."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  s.usuario::text          AS usuario,\n  s.telefono::text         AS telefono,       -- si no existe, puedes omitir y usar usuario\n  s.nombre,\n  s.apellido_paterno,\n  s.apellido_materno,\n  s.municipio,\n  s.\"nombre_recinto\"       AS nombre_recinto,\n  s.estado\nFROM seg_usuario s\nWHERE s.estado = true;",
+        "options": {}
+      },
+      "id": "152d2346-1cff-47bd-a631-4201283933cc",
+      "name": "Postgres (leer 1 usuario)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -96
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "35H1FB0uk1gnLC70",
+          "name": "Postgres account 2"
+        }
+      },
+      "notes": "Selecciona tus **credenciales de Postgres** al importar este flujo."
+    },
+    {
+      "parameters": {
+        "resource": "chat-api",
+        "instanceName": "DL",
+        "numbers": "={{ $json.number }}"
+      },
+      "id": "8d33bf60-65b4-485b-a589-09fce0c2b3cc",
+      "name": "Chat: Verificar número",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -80
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code (JavaScript) - Run once for all items\n// Produce: { number, text, linkPreview, instanceName, name, fecha_creacion }\n// Listo para: Chat: Verificar número -> Merge -> IF -> Enviar texto\n\n/***** Config *****/\nconst DEFAULT_CC = '591';                    // Bolivia\nconst TZ = 'America/La_Paz';\nconst TZ_OFFSET = '-04:00';\nconst DEFAULT_LINK = 'https://marcovaldivia.org/';\nconst DEFAULT_INSTANCE = 'DL';               // Cambia si tu instancia se llama distinto\n\n/***** Utils *****/\nconst onlyDigits = (s) => String(s ?? '').replace(/\\D+/g, '');\nconst hasTZ = (s) => /(?:Z|[+\\-]\\d{2}:\\d{2})$/i.test(String(s));\nfunction partsFromDateInTZ(date) {\n  const fmt = new Intl.DateTimeFormat('en-CA', {\n    timeZone: TZ,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n    hourCycle: 'h23'\n  });\n  const parts = Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));\n  return { Y: parts.year, M: parts.month, D: parts.day, h: parts.hour, m: parts.minute, s: parts.second };\n}\nconst isoFromPartsBo   = (p) => `${p.Y}-${p.M}-${p.D}T${p.h}:${p.m}:${p.s}${TZ_OFFSET}`;\nconst humanFromPartsBo = (p) => `${p.D}/${p.M}/${p.Y} ${p.h}:${p.m}`;\nfunction parseFechaCreacionBo(s) {\n  if (!s) return null;\n  s = String(s).trim();\n  if (hasTZ(s)) {\n    const d = new Date(s);\n    if (!isNaN(d)) { const p = partsFromDateInTZ(d); return { iso: isoFromPartsBo(p), human: humanFromPartsBo(p) }; }\n  }\n  const m = s.match(/^(\\d{4})[-/](\\d{2})[-/](\\d{2})[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?/);\n  if (m) { const p = { Y: m[1], M: m[2], D: m[3], h: m[4], m: m[5], s: m[6] || '00' }; return { iso: isoFromPartsBo(p), human: humanFromPartsBo(p) }; }\n  return null;\n}\nconst sanitize = (s) => String(s ?? '')\n  .replace(/[\\u200B-\\u200D\\uFEFF\\u00A0]/g, ' ')\n  .replace(/[“”‘’]/g, '\"')\n  .trim();\nconst ensureCleanUrl = (s) => {\n  let t = sanitize(s);\n  if (!/^https?:\\/\\//i.test(t)) t = 'https://' + t;\n  t = t.replace(/[)\\].,;:!\"'»]+$/g, '');\n  return t;\n};\n\n/***** Entrada *****/\nconst itemsIn = $input.all();\nif (!itemsIn.length) return [];\n\n// Puedes pasar configs globales en el primer item si quieres (opcionales)\nconst cfg = itemsIn[0].json || {};\nconst cc           = String(cfg.country_code ?? DEFAULT_CC);\nconst instanceName = String(cfg.evo_instance || DEFAULT_INSTANCE);\nconst target       = onlyDigits(cfg.target_usuario || ''); // para filtrar a uno solo (opcional)\nconst LINK_GLOBAL  = cfg.link ? ensureCleanUrl(cfg.link) : null;\n\n/***** Proceso *****/\nconst out = [];\n\nfor (const it of itemsIn) {\n  const r = it.json || {};\n\n  // Soporta ambas claves: \"teléfono\" (con tilde) y \"telefono\"\n  const telCampo = r.telefono ?? r['teléfono'] ?? r.usuario ?? '';\n  const telefonoLocal = onlyDigits(telCampo);\n  if (!telefonoLocal) continue;\n  if (target && telefonoLocal !== target) continue;\n\n  const number = telefonoLocal.startsWith(cc) ? telefonoLocal : `${cc}${telefonoLocal}`;\n\n  const nombre    = String(r.nombre ?? '').trim();\n  const ap_pat    = String(r.apellido_paterno ?? '').trim();\n  const ap_mat    = String(r.apellido_materno ?? '').trim();\n  const municipio = String(r.municipio ?? '').trim();\n  const recinto   = String(r.nombre_recinto ?? r.recinto ?? '').trim();\n  const name      = [nombre, ap_pat, ap_mat].filter(Boolean).join(' ').trim() || null;\n\n  let fecha = parseFechaCreacionBo(r.fecha_creacion);\n  if (!fecha) {\n    const now = new Date();\n    const pNow = partsFromDateInTZ(now);\n    fecha = { iso: isoFromPartsBo(pNow), human: humanFromPartsBo(pNow) };\n  }\n\n  const LINK = LINK_GLOBAL || ensureCleanUrl(r.link || DEFAULT_LINK);\n\n  const text = sanitize(\n`🇧🇴 ¡Hola ${nombre} ${ap_pat} ${ap_mat}! 🙌\nTe has registrado para el recinto 📍 ${recinto} en el municipio ${municipio}.\nEstás registrado con el número 📱 ${telefonoLocal}.\n🗓️ Fecha de registro: ${fecha.human}\n\n¡Estamos a 5 dias! y queremos confirmar:\n¿Tus datos son los correctos? Responde ✅ Sí o ❌ No.\nSi quieres, envíanos una 📸 foto tuya para tu carnet. ¡Gracias! 🙏\n\n${LINK}`\n  );\n\n  out.push({\n    json: {\n      number,              // p.ej. 5917XXXXXXX\n      text,                // mensaje final\n      linkPreview: true,   // para Evolution\n      instanceName,        // lo usamos en Enviar texto\n      name,                // útil para logs\n      fecha_creacion: fecha.iso\n    }\n  });\n}\n\nreturn out;"
+      },
+      "id": "d2a62ac6-1609-45d8-9ec9-9c6393e921ba",
+      "name": "Formatear mensaje (JS)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "wa_status",
+              "value": "no_whatsapp"
+            },
+            {
+              "name": "wa_reason",
+              "value": "Número no posee cuenta de WhatsApp (exists:false)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "61300ae3-9139-4824-8dae-b809eca4dbf1",
+      "name": "Set: Sin WhatsApp2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "DL",
+        "remoteJid": "=",
+        "messageText": "=",
+        "options_message": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        -128
+      ],
+      "id": "ad69d6af-132a-4eb4-a1fb-abb170024777",
+      "name": "Enviar texto",
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "jid",
+              "value": "={{ ((d)=> d?.data?.[0]?.jid ?? d?.datos?.[0]?.jid ?? d?.jid)($json) }}"
+            },
+            {
+              "name": "number_checked",
+              "value": "={{ ((d)=> d?.data?.[0]?.number ?? d?.datos?.[0]?.número ?? d?.datos?.[0]?.numero ?? d?.number ?? d?.número ?? d?.numero)($json) }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "exists",
+              "value": "={{ ((d)=> d?.data?.[0]?.exists ?? d?.datos?.[0]?.existe ?? d?.exists ?? d?.existe ?? false)($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "92f0e503-1228-428e-b69e-7ebaae020aba",
+      "name": "Set: Flatten check3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.exists ?? $json.data?.[0]?.exists ?? $json.datos?.[0]?.existe }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b26bed00-2bb8-4459-a8b3-5b3cd8f73d55",
+      "name": "IF: Existe en WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "send_number",
+              "value": "={{ $json.number_checked }}"
+            },
+            {
+              "name": "send_text",
+              "value": "="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5c8cb640-e245-46e2-8a53-502d0c87cd25",
+      "name": "Set: Build payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code (JavaScript) - Run once for all items\n// Produce: { number, text, linkPreview, instanceName, name, fecha_creacion }\n\n/***** Config *****/\nconst DEFAULT_CC = '591';                    // Bolivia\nconst TZ = 'America/La_Paz';\nconst TZ_OFFSET = '-04:00';\nconst DEFAULT_LINK = 'https://marcovaldivia.org/';\nconst DEFAULT_INSTANCE = 'DL';               // Cambia si tu instancia se llama distinto\n\n/***** Utils *****/\nconst onlyDigits = (s) => String(s ?? '').replace(/\\D+/g, '');\nconst hasTZ = (s) => /(?:Z|[+\\-]\\d{2}:\\d{2})$/i.test(String(s));\nfunction partsFromDateInTZ(date) {\n  const fmt = new Intl.DateTimeFormat('en-CA', {\n    timeZone: TZ,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n    hourCycle: 'h23'\n  });\n  const parts = Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));\n  return { Y: parts.year, M: parts.month, D: parts.day, h: parts.hour, m: parts.minute, s: parts.second };\n}\nconst isoFromPartsBo   = (p) => `${p.Y}-${p.M}-${p.D}T${p.h}:${p.m}:${p.s}${TZ_OFFSET}`;\nconst humanFromPartsBo = (p) => `${p.D}/${p.M}/${p.Y} ${p.h}:${p.m}`;\nfunction parseFechaCreacionBo(s) {\n  if (!s) return null;\n  s = String(s).trim();\n  if (hasTZ(s)) {\n    const d = new Date(s);\n    if (!isNaN(d)) { const p = partsFromDateInTZ(d); return { iso: isoFromPartsBo(p), human: humanFromPartsBo(p) }; }\n  }\n  const m = s.match(/^(\\d{4})[-/](\\d{2})[-/](\\d{2})[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?/);\n  if (m) { const p = { Y: m[1], M: m[2], D: m[3], h: m[4], m: m[5], s: m[6] || '00' }; return { iso: isoFromPartsBo(p), human: humanFromPartsBo(p) }; }\n  return null;\n}\nconst sanitize = (s) => String(s ?? '')\n  .replace(/[\\u200B-\\u200D\\uFEFF\\u00A0]/g, ' ')\n  .replace(/[“”‘’]/g, '\"')\n  .trim();\nconst ensureCleanUrl = (s) => {\n  let t = sanitize(s);\n  if (!/^https?:\\/\\//i.test(t)) t = 'https://' + t;\n  t = t.replace(/[)\\].,;:!\"'»]+$/g, '');\n  return t;\n};\n\n/***** Entrada *****/\nconst itemsIn = $input.all();\nif (!itemsIn.length) return [];\n\n// Configs globales opcionales en el primer item\nconst cfg = itemsIn[0].json || {};\nconst cc           = String(cfg.country_code ?? DEFAULT_CC);\nconst instanceName = String(cfg.evo_instance || DEFAULT_INSTANCE);\nconst target       = onlyDigits(cfg.target_usuario || ''); // filtrar a uno solo (opcional)\nconst LINK_GLOBAL  = cfg.link ? ensureCleanUrl(cfg.link) : null;\n\n/***** Proceso *****/\nconst out = [];\n\nfor (const it of itemsIn) {\n  const r = it.json || {};\n\n  // Soporta \"telefono\" y \"teléfono\" y \"usuario\"\n  const telCampo = r.telefono ?? r['teléfono'] ?? r.usuario ?? '';\n  const telefonoLocal = onlyDigits(telCampo);\n  if (!telefonoLocal) continue;\n  if (target && telefonoLocal !== target) continue;\n\n  const number = telefonoLocal.startsWith(cc) ? telefonoLocal : `${cc}${telefonoLocal}`;\n\n  const nombre    = String(r.nombre ?? '').trim();\n  const ap_pat    = String(r.apellido_paterno ?? '').trim();\n  const ap_mat    = String(r.apellido_materno ?? '').trim();\n  const municipio = String(r.municipio ?? '').trim();\n  const recinto   = String(r.nombre_recinto ?? r.recinto ?? '').trim();\n  const name      = [nombre, ap_pat, ap_mat].filter(Boolean).join(' ').trim() || null;\n\n  let fecha = parseFechaCreacionBo(r.fecha_creacion);\n  if (!fecha) {\n    const now = new Date();\n    const pNow = partsFromDateInTZ(now);\n    fecha = { iso: isoFromPartsBo(pNow), human: humanFromPartsBo(pNow) };\n  }\n\n  const LINK = LINK_GLOBAL || ensureCleanUrl(r.link || DEFAULT_LINK);\n\n  const text = sanitize(\n`🇧🇴 ¡Hola ${nombre} ${ap_pat} ${ap_mat}! 🙌\nTe has registrado para el recinto 📍 ${recinto} en el municipio ${municipio}.\nEstás registrado con el número 📱 ${telefonoLocal}.\n🗓️ Fecha de registro: ${fecha.human}\n\n¡Estamos a 5 días! y queremos confirmar:\n¿Tus datos son los correctos? Responde ✅ Sí o ❌ No.\nSi quieres, envíanos una 📸 foto tuya para tu carnet. ¡Gracias! 🙏\n\n${LINK}`\n  );\n\n  out.push({\n    json: {\n      number,              // 5917XXXXXXX\n      text,                // mensaje final\n      linkPreview: true,   // Evolution\n      instanceName,        // se usa en Enviar texto\n      name,                // útil para logs\n      fecha_creacion: fecha.iso\n    }\n  });\n}\n\nreturn out;"
+      },
+      "id": "50a73d9e-1828-4469-a40f-f1147f72f4f5",
+      "name": "Formatear mensaje (JS)1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat-api",
+        "instanceName": "DL",
+        "numbers": "={{ $json.number }}"
+      },
+      "id": "e9b8a3d7-8312-46ec-a5ec-5784090258a4",
+      "name": "Chat: Verificar número1",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        944,
+        288
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "XJEGvlLekyA8lBQ3",
+          "name": "dasa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "jid",
+              "value": "={{ ((d)=> d?.data?.[0]?.jid ?? d?.datos?.[0]?.jid ?? d?.jid)($json) }}"
+            },
+            {
+              "name": "number_checked",
+              "value": "={{ ((d)=> d?.data?.[0]?.number ?? d?.datos?.[0]?.número ?? d?.datos?.[0]?.numero ?? d?.number ?? d?.número ?? d?.numero)($json) }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "exists",
+              "value": "={{ ((d)=> d?.data?.[0]?.exists ?? d?.datos?.[0]?.existe ?? d?.exists ?? d?.existe ?? false)($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "154e9672-ae34-4410-9e48-5757dd24fc34",
+      "name": "Set: Flatten check",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "11857342-cf92-469c-a009-47a50c5c0bc9",
+              "leftValue": true,
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f51d5ca6-cce3-4b29-afe3-cc33ced2fad3",
+      "name": "IF: Existe en WhatsApp?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "={{ $json.send_instance }}",
+        "options_message": {}
+      },
+      "id": "9775b023-8a52-42a1-9a02-63fcff77a61f",
+      "name": "Enviar texto1",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        240
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "wa_status",
+              "value": "no_whatsapp"
+            },
+            {
+              "name": "wa_reason",
+              "value": "Número no posee cuenta de WhatsApp (exists:false)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "245604c1-18eb-4b65-ad4e-1727aa7866a9",
+      "name": "Set: Sin WhatsApp",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  s.usuario::text          AS usuario,\n  s.telefono::text         AS telefono,       -- si no existe, puedes omitir y usar usuario\n  s.nombre,\n  s.apellido_paterno,\n  s.apellido_materno,\n  s.municipio,\n  s.\"nombre_recinto\"       AS nombre_recinto,\n  s.estado\nFROM seg_usuario s\nWHERE s.estado = true;",
+        "options": {}
+      },
+      "id": "669ae66a-d6cd-4d25-96a4-6a1201fa0716",
+      "name": "Postgres (leer 1 usuario)2",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        560,
+        288
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "35H1FB0uk1gnLC70",
+          "name": "Postgres account 2"
+        }
+      },
+      "notes": "Selecciona tus **credenciales de Postgres** al importar este flujo."
+    }
+  ],
+  "connections": {
+    "Disparador manual": {
+      "main": [
+        [
+          {
+            "node": "Postgres (leer 1 usuario)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: SELECT elecciones": {
+      "main": [
+        []
+      ]
+    },
+    "Postgres (leer 1 usuario)": {
+      "main": [
+        [
+          {
+            "node": "Formatear mensaje (JS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat: Verificar número": {
+      "main": [
+        [
+          {
+            "node": "Set: Flatten check3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear mensaje (JS)": {
+      "main": [
+        [
+          {
+            "node": "Chat: Verificar número",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Flatten check3": {
+      "main": [
+        [
+          {
+            "node": "IF: Existe en WhatsApp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Build payload": {
+      "main": [
+        [
+          {
+            "node": "Enviar texto1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear mensaje (JS)1": {
+      "main": [
+        [
+          {
+            "node": "Chat: Verificar número1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat: Verificar número1": {
+      "main": [
+        [
+          {
+            "node": "Set: Flatten check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Flatten check": {
+      "main": [
+        [
+          {
+            "node": "IF: Existe en WhatsApp?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Existe en WhatsApp?1": {
+      "main": [
+        [
+          {
+            "node": "Set: Build payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: Sin WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres (leer 1 usuario)2": {
+      "main": [
+        [
+          {
+            "node": "Formatear mensaje (JS)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "bfbea97c-57d1-4747-9b2d-6c915fa1335e",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-15T00:04:57.505Z",
+      "createdAt": "2025-10-15T00:04:57.505Z",
+      "role": "workflow:owner",
+      "workflowId": "R4uun3qwnMKnavKj",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

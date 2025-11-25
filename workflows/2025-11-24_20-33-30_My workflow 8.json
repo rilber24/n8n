@@ -1,0 +1,399 @@
+{
+  "updatedAt": "2025-09-02T04:48:42.000Z",
+  "createdAt": "2025-09-02T03:54:09.608Z",
+  "id": "VMJWWJy7qvstHS2J",
+  "name": "My workflow 8",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-media",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "59ac7cde-de2e-4664-9bd3-6d8eab113ab0",
+      "name": "Webhook: Receive file + caption",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        224
+      ],
+      "webhookId": "bed4570e-e75a-4b29-b13d-40e76a037ab7"
+    },
+    {
+      "parameters": {
+        "options": {
+          "encoding": "base64"
+        }
+      },
+      "id": "3b07491f-c6f1-4bab-b678-fc3700fe24d2",
+      "name": "Move Binary Data: file → base64",
+      "type": "n8n-nodes-base.moveBinaryData",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "caption",
+              "value": "={{$json[\"body\"][\"caption\"]}}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{$binary.file.fileName || \"archivo\"}}"
+            },
+            {
+              "name": "mimetype",
+              "value": "={{$binary.file.mimeType}}"
+            },
+            {
+              "name": "mediatype",
+              "value": "={{$binary.file.mimeType.startsWith('image/') ? 'image' : ($binary.file.mimeType.startsWith('video/') ? 'video' : ($binary.file.mimeType.startsWith('audio/') ? 'audio' : 'document'))}}"
+            },
+            {
+              "name": "media_dataurl",
+              "value": "={{ 'data:' + $binary.file.mimeType + ';base64,' + $json.media_b64 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8812e00e-ac33-40d2-9a8b-393791a31d17",
+      "name": "Set: normalize fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        96,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1fb04veHWBnHAiK3h90JegOq2EEqs6oWsKs_VyvpS0aY",
+          "mode": "list",
+          "cachedResultName": "contactos_whatsapp",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fb04veHWBnHAiK3h90JegOq2EEqs6oWsKs_VyvpS0aY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 409893544,
+          "mode": "list",
+          "cachedResultName": "contactos_whatsapp",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fb04veHWBnHAiK3h90JegOq2EEqs6oWsKs_VyvpS0aY/edit#gid=409893544"
+        },
+        "options": {}
+      },
+      "id": "f95f32c9-be81-4dda-a295-4e09792010fa",
+      "name": "Google Sheets: Read contactos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        96,
+        464
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7WiCURfDxh1wZpqw",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"enviar\"]}}",
+              "operation": "equal",
+              "value2": "TRUE"
+            }
+          ],
+          "boolean": [
+            {
+              "value1": "={{$json[\"enviar\"]}}",
+              "operation": "isTrue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "35be19dc-3584-47e3-a6ba-878da6f84205",
+      "name": "IF: enviar == TRUE",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        336,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field2": "numero_e164"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "761c4e30-cae8-494c-8c30-8fbfbbcc0c5b",
+      "name": "Merge: combine contacto + media",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        608,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b02f5b1d-36c1-4d91-887a-4f63ca1f6eb5",
+      "name": "Split In Batches (10)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        848,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.ril.serviciocliente.site/message/sendMedia/mm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "application/json",
+              "value": "471D0C16CA24-4397-A5EE-F596DB01669E"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "786b31ca-090e-43b6-8c71-bb0d3ba547c7",
+      "name": "HTTP → Evolution sendMedia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1088,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "f0100601-3d0a-44e6-8400-7914c18df511",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a5b2e7d9-0d95-4f37-a24e-2268d5fab970",
+      "name": "IF: HTTP 2xx?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "unit": "seconds"
+      },
+      "id": "2b52b79e-36b9-4e3f-b377-8dd4c84dc2f2",
+      "name": "Wait 1s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        352
+      ],
+      "webhookId": "36f38f8c-dbd8-4ebf-83c5-005e83614dc2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "3f03bbe8-05dc-4279-8e3e-79e87ba00201",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        304,
+        64
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Receive file + caption": {
+      "main": [
+        [
+          {
+            "node": "Move Binary Data: file → base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Binary Data: file → base64": {
+      "main": [
+        [
+          {
+            "node": "Set: normalize fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: normalize fields": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Read contactos": {
+      "main": [
+        [
+          {
+            "node": "IF: enviar == TRUE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: enviar == TRUE": {
+      "main": [
+        [
+          {
+            "node": "Merge: combine contacto + media",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge: combine contacto + media": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (10)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches (10)": {
+      "main": [
+        [
+          {
+            "node": "HTTP → Evolution sendMedia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP → Evolution sendMedia": {
+      "main": [
+        [
+          {
+            "node": "IF: HTTP 2xx?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: HTTP 2xx?": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 1s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1s": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (10)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "96e9f81e-abfe-4e15-8f65-2c2352b69f9b",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-02T03:54:09.619Z",
+      "createdAt": "2025-09-02T03:54:09.619Z",
+      "role": "workflow:owner",
+      "workflowId": "VMJWWJy7qvstHS2J",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

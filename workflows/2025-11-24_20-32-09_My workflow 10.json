@@ -1,0 +1,502 @@
+{
+  "updatedAt": "2025-09-03T02:02:37.000Z",
+  "createdAt": "2025-09-03T01:49:05.280Z",
+  "id": "3k83jEVrQQDtN0dn",
+  "name": "My workflow 10",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4b41f957-26e7-4ae0-9879-8a86e55b2544",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "modo",
+              "value": "text"
+            },
+            {
+              "name": "message",
+              "value": "📣 Comunicado área 3: reunión 10:30."
+            },
+            {
+              "name": "mediaUrl"
+            },
+            {
+              "name": "fileName",
+              "value": "aviso.pdf"
+            },
+            {
+              "name": "operatorTo",
+              "value": "5917XXXXXXXX"
+            },
+            {
+              "name": "overrideTo"
+            },
+            {
+              "name": "EVOLUTION_BASE_URL",
+              "value": "https://YOUR-EVOLUTION"
+            },
+            {
+              "name": "EVOLUTION_TOKEN",
+              "value": "YOUR_TOKEN"
+            }
+          ],
+          "number": [
+            {
+              "name": "areaId",
+              "value": 3
+            },
+            {
+              "name": "batchSize",
+              "value": 25
+            },
+            {
+              "name": "delaySeconds",
+              "value": 0.3
+            }
+          ],
+          "boolean": [
+            {
+              "name": "verifyNumber"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b8b728a-05c3-49ab-8c3c-ce0bfa7318c0",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://apirrhh.envibol.site/api/v1/N8n/GetUnidad/{{$json.areaId}}",
+        "options": {}
+      },
+      "id": "3fb9bbf5-c85e-4d77-bca0-812248f663be",
+      "name": "HTTP GetUnidad",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "\nconst personas = $json.data || [];\nconst p = $prevNode[\"Set Params\"].json;\n\nconst e164 = s => String(s||'').replace(/\\D/g,'');\n\nlet recipients = personas\n  .filter(x => x.celular)\n  .map(x => ({\n    to: e164(x.celular),\n    modo: p.modo,\n    message: p.message,\n    mediaUrl: p.mediaUrl || '',\n    fileName: p.fileName || 'adjunto.pdf',\n    EVOLUTION_BASE_URL: p.EVOLUTION_BASE_URL,\n    EVOLUTION_TOKEN: p.EVOLUTION_TOKEN,\n    operatorTo: p.operatorTo,\n    delaySeconds: p.delaySeconds\n  }));\n\nif ((p.overrideTo || '').trim()) {\n  recipients = [{\n    to: e164(p.overrideTo),\n    modo: p.modo,\n    message: `[TEST — Área ${p.areaId}] ${p.message}`,\n    mediaUrl: p.mediaUrl || '',\n    fileName: p.fileName || 'adjunto.pdf',\n    EVOLUTION_BASE_URL: p.EVOLUTION_BASE_URL,\n    EVOLUTION_TOKEN: p.EVOLUTION_TOKEN,\n    operatorTo: p.operatorTo,\n    delaySeconds: p.delaySeconds\n  }];\n}\n\nconst store = this.getWorkflowStaticData('global');\nstore.broadcast = store.broadcast || {};\nconst broadcastId = `b_${Date.now()}`;\nstore.broadcast[broadcastId] = { sent:0, failed:0, invalid:0, total: recipients.length, areaId: p.areaId, startedAt: new Date().toISOString() };\n\nreturn recipients.map(r => ({ json: { ...r, broadcastId } }));\n"
+      },
+      "id": "34198d91-40ff-4ddd-946a-7d7259c3ef22",
+      "name": "Function Expand",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "={{$prevNode['Set Params'].json.batchSize}}",
+        "options": {}
+      },
+      "id": "12d37aeb-6ce3-4e9d-9c9f-8d13de9d13f1",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.modo}}",
+              "value2": "text"
+            }
+          ]
+        }
+      },
+      "id": "0018c126-9180-4309-9b9d-dc22ceff3651",
+      "name": "IF Text",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.modo}}",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "id": "b9a7ff42-a5bf-4fba-a19f-60f2e8878415",
+      "name": "IF Image",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        0,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.modo}}",
+              "value2": "document"
+            }
+          ]
+        }
+      },
+      "id": "e1a27c75-c04b-44c1-8b9a-774111aad44d",
+      "name": "IF Document",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.EVOLUTION_BASE_URL}}/send-text?token={{$json.EVOLUTION_TOKEN}}",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "502d2c35-f4a6-4beb-b80c-35e08309557e",
+      "name": "Send Text (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.EVOLUTION_BASE_URL}}/send-image?token={{$json.EVOLUTION_TOKEN}}",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "0c3ea08f-dcf7-4057-a7d8-1f340ef48435",
+      "name": "Send Image (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.EVOLUTION_BASE_URL}}/send-document?token={{$json.EVOLUTION_TOKEN}}",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "ee8491dc-6a5a-4c5b-b9bc-9a8017d41c21",
+      "name": "Send Document (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "\nconst store = this.getWorkflowStaticData('global');\nconst id = $json.broadcastId;\nconst ok = ($json.statusCode === undefined) || ($json.statusCode >= 200 && $json.statusCode < 300);\nif (ok) store.broadcast[id].sent++;\nelse store.broadcast[id].failed++;\nreturn items;\n"
+      },
+      "id": "a74ceb8d-0a15-4a9b-ad77-6884c5e3a1ac",
+      "name": "Function Tally",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        480,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "amount": "={{$json.delaySeconds || 0.3}}",
+        "unit": "seconds"
+      },
+      "id": "9de77cb8-4062-4b78-9d51-e50335ffe337",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        720,
+        112
+      ],
+      "webhookId": "10945871-825d-4d02-9828-21abc4355ab0"
+    },
+    {
+      "parameters": {
+        "functionCode": "\nconst store = this.getWorkflowStaticData('global');\nconst keys = Object.keys(store.broadcast || {});\nif (!keys.length) {\n  return [{ json: { to: $prevNode[\"Set Params\"].json.operatorTo, message: \"No hay métricas registradas.\" } }];\n}\nconst id = keys.sort().slice(-1)[0];\nconst m = store.broadcast[id];\n\nm.finishedAt = new Date().toISOString();\nm.durationSec = Math.round((new Date(m.finishedAt) - new Date(m.startedAt)) / 1000);\n\nconst summary =\n  `📊 *Resumen envío área ${m.areaId}*\\\\n` +\n  `• Total destinatarios: ${m.total}\\\\n` +\n  `• Enviados OK: ${m.sent}\\\\n` +\n  `• Inválidos: ${m.invalid}\\\\n` +\n  `• Fallidos: ${m.failed}\\\\n` +\n  `• Duración: ${m.durationSec}s\\\\n` +\n  `• ID: ${id}`;\n\nreturn [{ json: { to: $prevNode[\"Set Params\"].json.operatorTo, message: summary } }];\n"
+      },
+      "id": "226b318b-358f-4f0b-b244-091764b0ead9",
+      "name": "Function Build Summary",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        0,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$prevNode['Set Params'].json.EVOLUTION_BASE_URL}}/send-text?token={{$prevNode['Set Params'].json.EVOLUTION_TOKEN}}",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "0d89f72f-5074-4669-84a4-4b207039899e",
+      "name": "Send Summary (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const s=this.getWorkflowStaticData('global'); s.broadcast={}; return items;"
+      },
+      "id": "bf41f92e-e1f6-41ee-b955-8e722d708c1e",
+      "name": "Function Cleanup",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        480,
+        368
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Params": {
+      "main": [
+        [
+          {
+            "node": "HTTP GetUnidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP GetUnidad": {
+      "main": [
+        [
+          {
+            "node": "Function Expand",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function Expand": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "IF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Text": {
+      "main": [
+        [
+          {
+            "node": "Send Text (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Image": {
+      "main": [
+        [
+          {
+            "node": "Send Image (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Document": {
+      "main": [
+        [
+          {
+            "node": "Send Document (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Text (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Function Tally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Image (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Function Tally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Document (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Function Tally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function Tally": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Summary (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Function Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "380905bb-53f0-4218-9500-6a7cb4afefb6",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-03T01:49:05.283Z",
+      "createdAt": "2025-09-03T01:49:05.283Z",
+      "role": "workflow:owner",
+      "workflowId": "3k83jEVrQQDtN0dn",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

@@ -1,0 +1,396 @@
+{
+  "updatedAt": "2025-11-24T18:36:53.000Z",
+  "createdAt": "2025-11-24T17:01:17.507Z",
+  "id": "44bHVR2N9tWTNjGe",
+  "name": "Backup Workflows n8n → GitHub (Create/Update sin perder binary)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 1
+            }
+          ]
+        }
+      },
+      "id": "3f8752a3-6f9e-480c-8f28-c67d7e0bb75a",
+      "name": "Cron Diario",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1952,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://n8n.ril.serviciocliente.site/api/v1/workflows",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmUwYmI2Ny05NjkwLTQ4NjYtOGE4Yi1jODVkNzYyMGZiOTMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYzOTkxMTQ5fQ.hiX1Ku26KEtQgN5aduRIM12tZYl4lEktCkPr-FlPufA"
+            }
+          ]
+        }
+      },
+      "id": "651b078c-2609-49f4-97ba-cb6426fadb52",
+      "name": "Get Workflows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -1712,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const list = items[0].json.data || [];\nreturn list.map(wf => ({ json: wf }));"
+      },
+      "id": "7b53592b-3364-4b51-ad88-78c273941680",
+      "name": "Split data[] to items",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "fa205caa-e396-4502-9926-3585e1853bed",
+      "name": "Split Workflows",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        -1264,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const wf = items[0].json;\nconst content = JSON.stringify(wf, null, 2);\nconst safeName = (wf.name || `workflow_${wf.id}`).replace(/[\\\\/:*?\"<>|]/g, \"_\");\n\nreturn [\n  {\n    json: wf,\n    binary: {\n      data: {\n        data: Buffer.from(content, \"utf8\").toString(\"base64\"),\n        mimeType: \"application/json\",\n        fileName: `${safeName}.json`\n      }\n    }\n  }\n];"
+      },
+      "id": "cbbc6573-cecf-4756-ada6-22d14e741f97",
+      "name": "Prepare JSON File",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "get",
+        "owner": {
+          "__rl": true,
+          "value": "rilber24",
+          "mode": "list",
+          "cachedResultName": "rilber24",
+          "cachedResultUrl": "https://github.com/rilber24"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "n8n",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://github.com/rilber24/n8n"
+        },
+        "filePath": "=workflows/{{$binary.data.fileName}}",
+        "additionalParameters": {}
+      },
+      "id": "3c7d15cd-649d-43e1-a88b-5a12996494ec",
+      "name": "Get file SHA",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        144
+      ],
+      "settings": {
+        "continueOnFail": true
+      },
+      "webhookId": "057d7b97-dbec-42ab-a1a2-50cd2fe786c1",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "PEv2nVtvP48wKeGG",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "a45d28a1-d091-45d3-9c9c-b1f26af71a22",
+      "name": "Merge Binary + SHA",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "{{$json.sha ? true : false}}",
+              "operation": "isTrue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "935fd7cb-a254-44b3-a049-112fd36af646",
+      "name": "Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "edit",
+        "owner": {
+          "__rl": true,
+          "value": "rilber24",
+          "mode": "list",
+          "cachedResultName": "rilber24",
+          "cachedResultUrl": "https://github.com/rilber24"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "n8n",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://github.com/rilber24/n8n"
+        },
+        "filePath": "=workflows/{{$binary.data.fileName}}",
+        "binaryData": true,
+        "commitMessage": "=Backup automático desde n8n - {{$now.toISODate()}}"
+      },
+      "id": "62305ef4-462f-43f9-a9ad-5e048fefe1c9",
+      "name": "Edit file",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        240
+      ],
+      "webhookId": "1dccd416-325b-44a8-aedb-e7c3afbc669f",
+      "credentials": {
+        "githubApi": {
+          "id": "bxxmbdGefz1aE7lv",
+          "name": "git_n8n"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "value": "rilber24",
+          "mode": "list",
+          "cachedResultName": "rilber24",
+          "cachedResultUrl": "https://github.com/rilber24"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "n8n",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://github.com/rilber24/n8n"
+        },
+        "filePath": "=workflows/{{$binary.data.fileName}}",
+        "binaryData": true,
+        "commitMessage": "=Backup automático desde n8n - {{$now.toISODate()}}"
+      },
+      "id": "f3a7ba52-b6b4-45fa-bee5-ade20cf0149e",
+      "name": "Create file",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        368
+      ],
+      "webhookId": "1a883157-cb0c-4cc4-86ed-20745293e578",
+      "credentials": {
+        "githubApi": {
+          "id": "bxxmbdGefz1aE7lv",
+          "name": "git_n8n"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -512,
+        -144
+      ],
+      "id": "1f46dbae-36d0-46b6-9f7c-3940d775fdd3",
+      "name": "Merge"
+    }
+  ],
+  "connections": {
+    "Cron Diario": {
+      "main": [
+        [
+          {
+            "node": "Get Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Workflows": {
+      "main": [
+        [
+          {
+            "node": "Split data[] to items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split data[] to items": {
+      "main": [
+        [
+          {
+            "node": "Split Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Workflows": {
+      "main": [
+        [
+          {
+            "node": "Prepare JSON File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare JSON File": {
+      "main": [
+        [
+          {
+            "node": "Get file SHA",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Binary + SHA",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get file SHA": {
+      "main": [
+        [
+          {
+            "node": "Merge Binary + SHA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Binary + SHA": {
+      "main": [
+        [
+          {
+            "node": "Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exists?": {
+      "main": [
+        [
+          {
+            "node": "Edit file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit file": {
+      "main": [
+        [
+          {
+            "node": "Split Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create file": {
+      "main": [
+        [
+          {
+            "node": "Split Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "77c2bf8a-4293-4277-a706-b1a78170b1c0",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-24T17:01:17.514Z",
+      "createdAt": "2025-11-24T17:01:17.514Z",
+      "role": "workflow:owner",
+      "workflowId": "44bHVR2N9tWTNjGe",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

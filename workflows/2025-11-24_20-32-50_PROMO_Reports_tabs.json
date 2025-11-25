@@ -1,0 +1,810 @@
+{
+  "updatedAt": "2025-11-14T17:59:38.000Z",
+  "createdAt": "2025-11-05T13:13:39.569Z",
+  "id": "GmnZukKCtfxie52G",
+  "name": "PROMO_Reports_tabs",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Dejar solo el primer item por teléfono (to o telefono_normalizado)\nconst firstByPhone = new Map();\nconst counts = new Map();\n\nfor (const it of items) {\n  const j = it.json || {};\n  const tel = j.to || j.telefono_normalizado;\n  if (!tel) continue;\n  counts.set(tel, (counts.get(tel) || 0) + 1);\n  if (!firstByPhone.has(tel)) firstByPhone.set(tel, it);\n}\n\nconst uniques = [];\nfor (const [tel, it] of firstByPhone.entries()) {\n  const j = { ...(it.json || {}) };\n  j.to = j.to || j.telefono_normalizado; // aseguramos 'to'\n  j.duplicados = (counts.get(tel) || 1) - 1; // info útil\n  uniques.push({ json: j, binary: it.binary });\n}\n\nreturn uniques;"
+      },
+      "id": "ca5359c0-e376-4253-a346-e31313329814",
+      "name": "Dejar únicos por teléfono",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Genera un reporte de teléfonos repetidos con conteo y nombres\nconst bucket = new Map();\nfor (const it of items) {\n  const j = it.json || {};\n  const tel = j.to || j.telefono_normalizado;\n  const nombre = j.nombre || '';\n  if (!tel) continue;\n  if (!bucket.has(tel)) bucket.set(tel, { tel, count: 0, names: new Set() });\n  const b = bucket.get(tel);\n  b.count++;\n  if (nombre) b.names.add(nombre);\n}\n\nconst out = [];\nfor (const { tel, count, names } of bucket.values()) {\n  if (count > 1) {\n    out.push({ json: { telefono: String(tel), repeticiones: count, nombres: Array.from(names).join(', ') } });\n  }\n}\nreturn out;"
+      },
+      "id": "217f45bb-eecd-4b93-b66e-b791a70b93dc",
+      "name": "Reporte duplicados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "WacFsVCMvfjZW2tL",
+          "mode": "list",
+          "cachedResultName": "dupli_numero",
+          "cachedResultUrl": "/projects/DLCF6dMNvaWDIOVx/datatables/WacFsVCMvfjZW2tL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "repeticiones": "={{ $json.repeticiones }}",
+            "nombre": "={{ $json.nombres }}",
+            "telefono": "={{ $json.telefono }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "repeticiones",
+              "displayName": "repeticiones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c4cfe030-f06c-4f26-afc8-a6de780bd861",
+      "name": "Guardar duplicados (opcional)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Subir archivo Excel e imagen",
+        "formDescription": "Carga tu archivo Excel con los contactos y la imagen a enviar por WhatsApp.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Archivo Excel",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".xlsx",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Imagen a enviar",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".jpg,.jpeg,.png",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ed4575f5-6265-44ea-9e72-e6122527808c",
+      "name": "Subir archivo e imagen1",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -720,
+        144
+      ],
+      "webhookId": "2d5d5254-37e2-4646-825a-ab3837dfc83b"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "Archivo_Excel",
+        "options": {}
+      },
+      "id": "d48fa79d-4151-4ce0-b4c0-366b7afd1464",
+      "name": "Leer Excel1",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeBoliviaMobile(raw) {\n  if (raw === undefined || raw === null || String(raw).trim() === '') {\n    return { ok: false, motivo: 'Sin número' };\n  }\n  let s = String(raw).trim().replace(/[^0-9]/g, '');\n  if (s.startsWith('00')) s = s.slice(2);\n  if (s.startsWith('591')) s = s.slice(3);\n  if (s.length === 9 && s.startsWith('0')) s = s.slice(1);\n  if (s.length > 8) s = s.slice(-8);\n  if (s.length !== 8) return { ok: false, motivo: `Longitud inválida (${s.length})` };\n  if (!/^[67]/.test(s)) return { ok: false, motivo: 'No es móvil (no inicia en 6/7)' };\n  return { ok: true, e164: '591' + s };\n}\nconst out=[];\nfor (const it of items){\n  const j=it.json||{};\n  const r=normalizeBoliviaMobile(j.telefono);\n  if (r.ok){\n    out.push({json:{valido:true, telefono_normalizado:r.e164, nombre:j.nombre||'', idcliente:j.idcliente||0 }});\n  } else {\n    out.push({json:{valido:false, motivo:r.motivo, telefono_original:(j.telefono==null?'':String(j.telefono)), nombre:j.nombre||'', idcliente:j.idcliente||0 }});\n  }\n}\nreturn out;"
+      },
+      "id": "5afe5b06-ed57-4666-9df3-74351fceaa65",
+      "name": "Clasificar teléfonos (BO)1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "20a85f91-bd9a-4143-afe2-c465ef7a4d36",
+              "leftValue": "={{ $json.valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3c9899a2-4533-4ea4-af42-cc8ea434ac2f",
+      "name": "¿Teléfono válido?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3164608a-b874-4dc1-8daf-e8fb4846e852",
+              "name": "nombre",
+              "value": "={{ $json.nombre }}",
+              "type": "string"
+            },
+            {
+              "id": "d4ee1888-ba1b-4ac7-b61c-c1157f28bc05",
+              "name": "telefono_original",
+              "value": "={{ $json.telefono_original }}",
+              "type": "string"
+            },
+            {
+              "id": "a479d128-d3c6-42d6-a82d-52e2b0f8e1fe",
+              "name": "motivo",
+              "value": "={{ $json.motivo }}",
+              "type": "string"
+            },
+            {
+              "id": "ff7ae937-6286-4c40-af55-2e2ff45227b8",
+              "name": "idcliente",
+              "value": "={{ $json.idcliente }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a0d2607a-4850-443d-8bb7-354a1348aec0",
+      "name": "Mapear error1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -48,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "gGrOlnDd2UIIHJxw",
+          "mode": "list",
+          "cachedResultName": "error_numero",
+          "cachedResultUrl": "/projects/DLCF6dMNvaWDIOVx/datatables/gGrOlnDd2UIIHJxw"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "nombre": "={{ $json.nombre }}",
+            "telefono_original": "={{ $json.telefono_original }}",
+            "motivo": "={{ $json.motivo }}",
+            "idcliente": "={{ $json.idcliente }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "telefono_original",
+              "displayName": "telefono_original",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "idcliente",
+              "displayName": "idcliente",
+              "type": "number",
+              "display": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e76b6716-0304-44cb-9c2b-72ec4cc09686",
+      "name": "errores_numeros1",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        96,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "to",
+              "type": "string",
+              "value": "={{$json.telefono_normalizado}}",
+              "id": "a694fc7e-5b70-4ce9-85b8-fd2491227ef6"
+            },
+            {
+              "id": "6717a7f1-b47c-4a0e-b99a-6928c962b1a5",
+              "name": "nombre",
+              "value": "={{ $json.nombre }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "39631cc7-4e9d-451a-b364-274d4e405026",
+      "name": "Preparar válidos (to)1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -48,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const bin=items[0].binary['Imagen_a_enviar'];\nif(!bin) throw new Error('No se encontró la imagen.');\nreturn [{json:{imagenBase64:bin.data}}];"
+      },
+      "id": "c560936e-0871-42ad-84ba-84c5bf1d28d7",
+      "name": "Convertir imagen a Base",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "9d53805a-153b-426a-b7e4-313428d0a9b1",
+      "name": "Combinar válidos + imagen1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        368,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "to",
+              "type": "string",
+              "value": "={{$json.to}}",
+              "id": "6bdd97ce-6c0f-4a6c-a8a3-99db927b0fa3"
+            },
+            {
+              "name": "imagenBase64",
+              "type": "string",
+              "value": "={{$json.imagenBase64}}",
+              "id": "238e65b8-757c-4ed3-a919-a4da9e891ba9"
+            },
+            {
+              "name": "caption",
+              "type": "string",
+              "value": "={{`👋 Hola ${$json.nombre || ''}!\\n☕🍫 ¡ENVIBOL presente en la FeXco Café y Cacao 2025!\\n📍 Recinto Ferial Alalay – Cochabamba\\n🗓 Del 21 al 23 de noviembre\\n✨ Aprovecha nuestra promoción especial:\\nAdquiere envases de vidrio a precio por mayor a partir de 100 unidades, con entrega disponible en La Paz, Santa Cruz y Cochabamba\\n📅 Promoción válida hasta el 23 de noviembre.\\n💬 ¡Estamos para atenderte y brindarte la mejor calidad boliviana!\\n❤️💛💚 #HechoEnBolivia 🇧🇴`}}",
+              "id": "9c1ffb19-8ed5-40a4-b184-b69902b10225"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "deed3aa1-8c45-4346-a6d9-02fa597bb82b",
+      "name": "Preparar mensaje1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "68d8a3d2-ccae-49f5-b01b-b60ab03138c0",
+      "name": "Enviar uno por uno",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        736,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-image",
+        "instanceName": "Envibol",
+        "remoteJid": "={{$json.to}}",
+        "media": "={{$json.imagenBase64}}",
+        "caption": "={{$json.caption}}",
+        "options_message": {
+          "delay": 8000
+        }
+      },
+      "id": "c6343161-b882-4af2-9532-eb81bf50c082",
+      "name": "Enviar imagen WhatsApp",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        896,
+        96
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "evolutionApi": {
+          "id": "W1x347goQjF9uCPr",
+          "name": "Envibol"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 5) + 4 }}",
+        "unit": "seconds"
+      },
+      "id": "56fdd778-a058-4e55-9af8-9b5c35ac68b0",
+      "name": "Esperar 4–8 s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        176
+      ],
+      "webhookId": "757aaea4-70d5-47ed-b59f-7e00b9990e1a"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "79e4a891-e0f7-4b61-a05a-c152ac4c3d93",
+              "name": "data.key.remoteJid",
+              "value": "={{ $json.data.key.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "d985b3bd-4a62-4711-8d98-e9dfa96a9762",
+              "name": "data.message.imageMessage.caption",
+              "value": "={{ $json.data.message.imageMessage.caption }}",
+              "type": "string"
+            },
+            {
+              "id": "a71cba4b-af9a-4f9f-9177-9e8a6c9105d6",
+              "name": "data.status",
+              "value": "={{ $json.data.status }}",
+              "type": "string"
+            },
+            {
+              "id": "11774c60-1e39-46a9-a886-88ffb71f0ae3",
+              "name": "data.key.id",
+              "value": "={{ $json.data.key.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d26061be-0b7b-4638-8363-4f62caee2bef",
+      "name": "Registrar éxito",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1280,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"telefono\": \"={{ String($json.to || $json.data?.key?.remoteJid?.replace('@s.whatsapp.net','').replace('@c.us','') || '') }}\",\n  \"estado\": \"Error\",\n  \"detalle\": \"={{ $json.error?.response?.message?.[0]?.error || $json.error?.response?.message?.[0]?.number || $json.errorDescription || $json.errorMessage || 'Fallo desconocido' }}\",\n  \"codigo\": \"={{ $json.error?.response?.status || $json.error?.status || 'N/A' }}\",\n  \"id_mensaje\": \"\"\n}",
+        "options": {}
+      },
+      "id": "d4f23be4-575e-4a17-b37d-2deeeb7102f4",
+      "name": "Registrar error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1280,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "co91A8sb0lX0QUA6",
+          "mode": "list",
+          "cachedResultName": "envibol_logs",
+          "cachedResultUrl": "/projects/_/datatables/co91A8sb0lX0QUA6"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefono": "={{ $json.data.key.remoteJid }}",
+            "estado": "=Enviado",
+            "detalle": "={{ $json.data.message.imageMessage.caption }}",
+            "codigo": "=200",
+            "id_mensaje": "={{ $json.data.key.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "detalle",
+              "displayName": "detalle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "codigo",
+              "displayName": "codigo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "id_mensaje",
+              "displayName": "id_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "02c0d429-cdaa-4d6d-bcc2-534be2a29b74",
+      "name": "Guardar en envibol_logs",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Dejar únicos por teléfono": {
+      "main": [
+        [
+          {
+            "node": "Combinar válidos + imagen1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reporte duplicados": {
+      "main": [
+        [
+          {
+            "node": "Guardar duplicados (opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir archivo e imagen1": {
+      "main": [
+        [
+          {
+            "node": "Leer Excel1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convertir imagen a Base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Excel1": {
+      "main": [
+        [
+          {
+            "node": "Clasificar teléfonos (BO)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar teléfonos (BO)1": {
+      "main": [
+        [
+          {
+            "node": "¿Teléfono válido?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Teléfono válido?1": {
+      "main": [
+        [
+          {
+            "node": "Preparar válidos (to)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mapear error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapear error1": {
+      "main": [
+        [
+          {
+            "node": "errores_numeros1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar válidos (to)1": {
+      "main": [
+        [
+          {
+            "node": "Dejar únicos por teléfono",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reporte duplicados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir imagen a Base": {
+      "main": [
+        [
+          {
+            "node": "Combinar válidos + imagen1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combinar válidos + imagen1": {
+      "main": [
+        [
+          {
+            "node": "Preparar mensaje1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar uno por uno": {
+      "main": [
+        [
+          {
+            "node": "Enviar imagen WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar imagen WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Registrar éxito",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Esperar 4–8 s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar éxito": {
+      "main": [
+        [
+          {
+            "node": "Guardar en envibol_logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar error": {
+      "main": [
+        [
+          {
+            "node": "Guardar en envibol_logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar 4–8 s": {
+      "main": [
+        [
+          {
+            "node": "Enviar uno por uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar mensaje1": {
+      "main": [
+        [
+          {
+            "node": "Enviar uno por uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "d067948b-7a10-416a-96ef-ed48924620a2",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-05T13:13:39.576Z",
+      "createdAt": "2025-11-05T13:13:39.576Z",
+      "role": "workflow:owner",
+      "workflowId": "GmnZukKCtfxie52G",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

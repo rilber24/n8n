@@ -1,0 +1,228 @@
+{
+  "updatedAt": "2025-11-11T01:52:44.000Z",
+  "createdAt": "2025-11-11T01:29:58.523Z",
+  "id": "RpXtKjNA0iqOqTPq",
+  "name": "ENVIBOL - Composición (Gráfico por Batch) Listo",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8992ff3b-bfce-4e86-aa96-ae60a4ca504f",
+      "name": "Disparador manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        192,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# 📊 ENVÍO DE BATCH COMPOSICIÓN (rango 7 días, compatible con 'nombre' y 'numero')\nfrom datetime import datetime, timedelta, timezone\nfrom urllib.parse import urlencode\n\nDEFAULT_CC = '591'\nAPLICAR_CORTE_7AM = False  # si True, antes de 07:00 \"hoy\" = ayer\n\ndef only_digits(s: str) -> str:\n    return ''.join(ch for ch in str(s) if ch.isdigit())\n\n# --- Fecha/hora Bolivia (UTC-4) ---\nTZ_BO = timezone(timedelta(hours=-4))\nahora = datetime.now(TZ_BO)\nhoy = (ahora - timedelta(days=1)).date() if (APLICAR_CORTE_7AM and ahora.hour < 7) else ahora.date()\n\n# Últimos 7 días: incluye hoy\nfecha_fin = hoy\nfecha_ini = hoy - timedelta(days=6)\n\nfmt_jasper = \"%Y-%m-%d\"\nfmt_legible = \"%d/%m/%Y\"\nperiodo_legible = f\"{fecha_ini.strftime(fmt_legible)} – {fecha_fin.strftime(fmt_legible)}\"\n\n# --- Jasper ---\nJ_USER = \"sedem\"       # ⚠️ En producción usar credenciales seguras/variables n8n\nJ_PASS = \"123456789\"\nreport_path = \"ENVIBOL/PRODUCCION/composicion/GraficoEnvBatch\"\n\nbase_pdf = (\n    \"http://sisub.subsidio.gob.bo:9090/jasperserver/rest_v2/reports/reports/\"\n    f\"{report_path}.pdf\"\n)\n\nparams = {\n    \"fecha_inicio\": fecha_ini.strftime(fmt_jasper),\n    \"fecha_fin\":    fecha_fin.strftime(fmt_jasper),\n}\n\nqs = {\"j_username\": J_USER, \"j_password\": J_PASS}\nqs.update(params)\nlink_pdf = f\"{base_pdf}?{urlencode(qs)}\"\n\n# --- Procesamiento ---\nitems_in = _input.all()\nif not items_in:\n    return []\n\nsalida = []\nfor item in items_in:\n    j = item.json or {}\n    # ✅ Acepta 'nombre' o 'Nombre'\n    nombre = j.get('Nombre') or j.get('nombre') or ''\n    # ✅ Acepta 'numero' o 'Numero'\n    numero_raw = j.get('Numero') or j.get('numero') or ''\n    numero = only_digits(numero_raw)\n\n    # Normalización del número\n    if numero.startswith(DEFAULT_CC):\n        pass\n    elif len(numero) == 8 and numero[0] in ('6', '7'):\n        numero = DEFAULT_CC + numero\n    elif numero.startswith('+591'):\n        numero = numero[1:]\n\n    texto = (\n        \"📊 *ENVÍO DE BATCH COMPOSICIÓN*\\n\"\n        f\"📅 Periodo: {periodo_legible}\\n\\n\"\n        f\"*{nombre}*,\\n\\n\"\n        \"Revisar por favor.\\n\\n\"\n        \"*ENVIBOL* 🏭\"\n    )\n\n    salida.append({\"json\": {\"number\": numero, \"text\": texto, \"link\": link_pdf}})\n\nreturn salida"
+      },
+      "id": "6d452278-df63-43b5-b564-9e6b18558299",
+      "name": "Formatear mensaje (Python)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "bcf19b8e-c1e9-4d82-b657-06cda514703a",
+      "name": "Split por registro",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        784,
+        848
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7d1a8a5c-ba41-439a-8f9f-8b1270e67504",
+      "name": "Continuar lote",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "Xg15ZFiaKG0JLFPx",
+          "mode": "list",
+          "cachedResultName": "compocicion",
+          "cachedResultUrl": "/projects/DLCF6dMNvaWDIOVx/datatables/Xg15ZFiaKG0JLFPx"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        384,
+        848
+      ],
+      "id": "46f97fa2-d20e-4ff6-a140-e01941fe42cf",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-document",
+        "instanceName": "dsb",
+        "remoteJid": "={{ $json.number }}",
+        "media": "={{ $json.link }}",
+        "caption": "={{ $json.text }}",
+        "fileName": "GRÁFICO ENVÍO DE BATCH.pdf",
+        "options_message": {
+          "delay": 10000
+        }
+      },
+      "id": "9d20821f-266f-44ec-8623-0208c551edf9",
+      "name": "Enviar PDF",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        960,
+        848
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "XJQVidx6LSBrYrny",
+          "name": "Dsbolivia"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8,
+              "triggerAtMinute": 40
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        848
+      ],
+      "id": "a003dd93-ba8f-4081-b4c2-7c4f429930c6",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+    "Disparador manual": {
+      "main": [
+        []
+      ]
+    },
+    "Formatear mensaje (Python)": {
+      "main": [
+        [
+          {
+            "node": "Split por registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split por registro": {
+      "main": [
+        [
+          {
+            "node": "Enviar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continuar lote": {
+      "main": [
+        [
+          {
+            "node": "Split por registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Formatear mensaje (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar PDF": {
+      "main": [
+        [
+          {
+            "node": "Continuar lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Disparador manual": [
+      {
+        "json": {}
+      }
+    ]
+  },
+  "versionId": "dcb21782-e463-446e-80de-9aa08d5a667d",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-11T01:29:58.530Z",
+      "createdAt": "2025-11-11T01:29:58.530Z",
+      "role": "workflow:owner",
+      "workflowId": "RpXtKjNA0iqOqTPq",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

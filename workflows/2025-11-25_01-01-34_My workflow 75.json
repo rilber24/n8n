@@ -1,0 +1,108 @@
+{
+  "updatedAt": "2025-11-20T16:53:13.000Z",
+  "createdAt": "2025-11-18T17:57:20.800Z",
+  "id": "WMgdLvrIKIogQND5",
+  "name": "My workflow 75",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f64c505f-1fef-4b70-b67a-f62fa0fb6b59",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "guardrails": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.guardrails",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -16
+      ],
+      "id": "dc98f85f-e694-4462-8fc0-ba1d80b31a72",
+      "name": "Guardrails"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "dsb",
+        "remoteJid": "59172896612",
+        "messageText": "Hola_mundo",
+        "options_message": {
+          "delay": 1200
+        }
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -224
+      ],
+      "id": "2e6ed704-5592-4120-b19a-af10fc90568d",
+      "name": "Enviar texto",
+      "credentials": {
+        "evolutionApi": {
+          "id": "XJQVidx6LSBrYrny",
+          "name": "Dsbolivia"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        48,
+        -224
+      ],
+      "id": "a79f62c5-8cef-482a-9b5e-e199a6873d05",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        []
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Enviar texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "75f560a1-d62c-41bf-bed8-18a5bc63e52d",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-18T17:57:20.807Z",
+      "createdAt": "2025-11-18T17:57:20.807Z",
+      "role": "workflow:owner",
+      "workflowId": "WMgdLvrIKIogQND5",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

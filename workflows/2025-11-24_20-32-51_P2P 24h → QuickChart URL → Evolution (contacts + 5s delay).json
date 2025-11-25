@@ -1,0 +1,339 @@
+{
+  "updatedAt": "2025-10-03T15:49:03.000Z",
+  "createdAt": "2025-10-03T13:18:58.525Z",
+  "id": "IE1c0gBzizOdS8i5",
+  "name": "P2P 24h → QuickChart URL → Evolution (contacts + 5s delay)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "95a1ece1-79db-4608-9663-77c2590a3768",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1760,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "function pad(n){return String(n).padStart(2,'0');}\nfunction fmtLocal(dt){\n  const tz = 'America/La_Paz';\n  const d = new Date(dt.toLocaleString('en-US', { timeZone: tz }));\n  const Y = d.getFullYear();\n  const M = pad(d.getMonth()+1);\n  const D = pad(d.getDate());\n  const h = pad(d.getHours());\n  const m = pad(d.getMinutes());\n  const s = pad(d.getSeconds());\n  return `${Y}-${M}-${D} ${h}:${m}:${s}`;\n}\nconst end = new Date(); end.setSeconds(0,0);\nconst start = new Date(end.getTime() - 24*3600*1000); start.setSeconds(0,0);\nconst startLocal = fmtLocal(start);\nconst endLocal   = fmtLocal(end);\nconst query = `SELECT 'Compra' AS serie, fecha_hora, precio\nFROM compra_bob\nWHERE fecha_hora >= '${startLocal}' AND fecha_hora <= '${endLocal}'\nUNION ALL\nSELECT 'Venta'  AS serie, fecha_hora, precio\nFROM venta_bob\nWHERE fecha_hora >= '${startLocal}' AND fecha_hora <= '${endLocal}'\nORDER BY fecha_hora ASC;`;\nreturn [{ json: { startLocal, endLocal, query } }];"
+      },
+      "id": "1900d4a7-0d34-4be1-a799-a0b8f37205db",
+      "name": "Function (Build SQL)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{$json[\"query\"]}}"
+      },
+      "id": "69a170d7-bf30-4da3-94b7-b70a554d99d1",
+      "name": "MySQL - Ejecutar SQL (24h)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const tz = 'America/La_Paz';\nconst end = new Date(); end.setSeconds(0,0);\nconst start = new Date(end.getTime() - 24*3600*1000); start.setSeconds(0,0);\nconst fmt = (d) => d.toLocaleString('es-BO', { timeZone: tz });\nif (!items || items.length === 0) { throw new Error('Sin filas desde MySQL para el rango de 24h.'); }\nconst compra = [], venta = [];\nconst toTs = (s) => { const t = Date.parse(String(s)); return Number.isFinite(t) ? t : null; };\nfor (const it of items) {\n  const r = it.json || {};\n  const x = toTs(r.fecha_hora);\n  const y = (r.precio != null) ? Number(r.precio) : null;\n  if (!x || !Number.isFinite(y)) continue;\n  const serie = String(r.serie || '').toLowerCase();\n  if (serie.startsWith('comp')) compra.push({ x, y });\n  else if (serie.startsWith('vent')) venta.push({ x, y });\n}\nif (compra.length === 0 && venta.length === 0) { throw new Error('Filas recibidas pero ninguna válida (serie/fecha_hora/precio).'); }\ncompra.sort((a,b)=>a.x-b.x); venta.sort((a,b)=>a.x-b.x);\nconst all = [...compra, ...venta].map(p => p.y);\nconst minY = Math.min(...all), maxY = Math.max(...all);\nconst padY = Math.max((maxY - minY) * 0.10, 0.02);\nconst suggestedMin = +(minY - padY).toFixed(2);\nconst suggestedMax = +(maxY + padY).toFixed(2);\nconst last = arr => arr.length ? arr[arr.length - 1].y : null;\nconst first = arr => arr.length ? arr[0].y : null;\nconst lCompra = last(compra), fCompra = first(compra);\nconst lVenta  = last(venta),  fVenta  = first(venta);\nconst dCompra = (lCompra!=null && fCompra!=null) ? (lCompra - fCompra) : null;\nconst dVenta  = (lVenta!=null  && fVenta!=null ) ? (lVenta  - fVenta ) : null;\nconst p  = v => v==null ? '–' : `$${v.toFixed(2)}`;\nconst pc = v => v==null ? ''  : (v>=0?`▲ +$${v.toFixed(2)}`:`▼ $${v.toFixed(2)}`);\nconst title = 'Precios P2P: Compra y Venta (BOB)';\nconst subtitle = `Últimas 24h: ${fmt(start)} → ${fmt(end)}`;\nconst caption = `${title}\\n${subtitle}\\nCompra: ${p(lCompra)} (${pc(dCompra)}) | Venta: ${p(lVenta)} (${pc(dVenta)})\\nRango 24h: ${p(minY)} – ${p(maxY)}`;\nconst green = '#2ecc71', red = '#e74c3c';\nconst chartConfig = {\n  type: 'line',\n  data: { datasets: [\n    { label:'Precio Compra', data:compra, borderColor:green, backgroundColor:green, tension:0.2, pointRadius:2, pointHoverRadius:3, spanGaps:true },\n    { label:'Precio Venta',  data:venta,  borderColor:red,   backgroundColor:red,   tension:0.2, pointRadius:2, pointHoverRadius:3, spanGaps:true }\n  ]},\n  options: {\n    parsing:false, animation:false,\n    layout:{ padding:{ top:10, right:16, bottom:8, left:8 } },\n    elements:{ line:{ borderWidth:2 } },\n    plugins:{\n      title:{ display:true, text:title, font:{ size:16, weight:'bold' } },\n      subtitle:{ display:true, text:subtitle, color:'#4b5563', font:{ size:12 } },\n      legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:8 } },\n      tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: $${Number(ctx.parsed.y).toFixed(2)}` } }\n    },\n    scales:{\n      x:{ type:'time', time:{ unit:'hour', tooltipFormat:'yyyy-MM-dd HH:mm' }, title:{ display:true, text:'Hora' }, ticks:{ maxRotation:0, autoSkip:true } },\n      y:{ title:{ display:true, text:'Precio (USDT)' }, suggestedMin, suggestedMax, ticks:{ callback:(v)=>`$${Number(v).toFixed(2)}` }, grid:{ color:'#e5e7eb' } }\n    }\n  }\n};\nreturn [{ json: { chartConfig, caption } }];"
+      },
+      "id": "dfeddd97-cc1e-4dda-a9ab-c219a94067d5",
+      "name": "Function (Build Chart + Caption)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://quickchart.io/chart/create",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "57a628a4-9e94-4caa-8616-0fb64e849599",
+      "name": "HTTP – QuickChart /chart/create",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "caption",
+              "value": "={{$json[\"caption\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e652df86-b1d3-4d9c-9071-2a91ee480af2",
+      "name": "Set (Caption)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "id": "698a02a4-5e6b-4e38-8839-c73bb28d0e32",
+      "name": "Merge (URL + Caption)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id AS contactId, nombre, numero FROM contactos_whatsapp ORDER BY nombre;"
+      },
+      "id": "9163b075-57b1-41d9-bae3-96f6704a5d39",
+      "name": "MySQL - Leer contactos",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const media = $item(0, 'Merge (URL + Caption)').$json; // { url, caption }\nreturn items.map(it => ({ json: { ...it.json, ...media } }));"
+      },
+      "id": "e7f985ad-93c7-446d-aaa8-42888118b8ac",
+      "name": "Function (Adjuntar media)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "07a31696-e511-4477-9aad-6a9588b58cfc",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        0,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://{{$env.EV_SERVER_URL}}/message/sendMedia/{{$env.EV_INSTANCE}}",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "f28fbdfe-96e8-44a1-b9f2-d7ba65695250",
+      "name": "HTTP – Evolution sendMedia (URL)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        256,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "aadc33e7-f23d-4ee3-86f0-84a0d07e6d56",
+      "name": "Wait 5s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        176,
+        624
+      ],
+      "webhookId": "4ac1de48-0db3-44bb-9169-8b1c7d6e544e"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Function (Build SQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function (Build SQL)": {
+      "main": [
+        [
+          {
+            "node": "MySQL - Ejecutar SQL (24h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL - Ejecutar SQL (24h)": {
+      "main": [
+        [
+          {
+            "node": "Function (Build Chart + Caption)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function (Build Chart + Caption)": {
+      "main": [
+        [
+          {
+            "node": "HTTP – QuickChart /chart/create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP – QuickChart /chart/create": {
+      "main": [
+        [
+          {
+            "node": "Merge (URL + Caption)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set (Caption)": {
+      "main": [
+        [
+          {
+            "node": "Merge (URL + Caption)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge (URL + Caption)": {
+      "main": [
+        [
+          {
+            "node": "MySQL - Leer contactos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL - Leer contactos": {
+      "main": [
+        [
+          {
+            "node": "Function (Adjuntar media)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function (Adjuntar media)": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "HTTP – Evolution sendMedia (URL)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP – Evolution sendMedia (URL)": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5s": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "adc358f6-b09c-4991-b3af-5e3cb8957149",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-03T13:18:58.530Z",
+      "createdAt": "2025-10-03T13:18:58.530Z",
+      "role": "workflow:owner",
+      "workflowId": "IE1c0gBzizOdS8i5",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

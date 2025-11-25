@@ -1,0 +1,394 @@
+{
+  "updatedAt": "2025-09-19T15:51:05.000Z",
+  "createdAt": "2025-09-19T15:06:23.254Z",
+  "id": "DmBgM68kilfRcHBV",
+  "name": "My workflow 43",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "b9c2a1d2-1e08-409d-a379-9b08c8825d25",
+      "name": "Cron 15m",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "page",
+              "value": "1"
+            },
+            {
+              "name": "rows",
+              "value": "20"
+            },
+            {
+              "name": "payTypes",
+              "value": "={{ [] }}"
+            },
+            {
+              "name": "asset",
+              "value": "USDT"
+            },
+            {
+              "name": "fiat",
+              "value": "BOB"
+            },
+            {
+              "name": "tradeType",
+              "value": "BUY"
+            },
+            {
+              "name": "publisherType",
+              "value": "={{ null }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "82052bd5-594b-4934-9bd8-9c518c9cc99a",
+      "name": "HTTP BUY (split=data)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "page",
+              "value": "1"
+            },
+            {
+              "name": "rows",
+              "value": "20"
+            },
+            {
+              "name": "payTypes",
+              "value": "=={{ [] }}"
+            },
+            {
+              "name": "asset",
+              "value": "USDT"
+            },
+            {
+              "name": "fiat",
+              "value": "BOB"
+            },
+            {
+              "name": "tradeType",
+              "value": "SELL"
+            },
+            {
+              "name": "publisherType",
+              "value": "=={{ null }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "7f27ca43-0a91-4571-9f3f-813320c4fbfb",
+      "name": "HTTP SELL (split=data)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 30
+      },
+      "id": "36518ce2-a5cb-4069-9ddc-3c1918ed74ad",
+      "name": "Limit BUY (2..31)",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 30
+      },
+      "id": "ddfafd69-4d8b-47bd-8aef-9ba2e7293dde",
+      "name": "Limit SELL (2..31)",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        208,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "captured_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "trade_type",
+              "value": "BUY"
+            },
+            {
+              "name": "advertiser_name",
+              "value": "={{ $json[\"advertiser\"]?.nickName || $json[\"advertiser\"]?.userNo || 'N/A' }}"
+            }
+          ],
+          "number": [
+            {
+              "name": "price_bob",
+              "value": "={{ Number($json[\"adv\"]?.price) }}"
+            },
+            {
+              "name": "available_usdt",
+              "value": "={{ Number($json[\"adv\"]?.surplusAmount) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "227148eb-12fd-4541-8851-f7cdfa4da9b3",
+      "name": "Set BUY fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "captured_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "trade_type",
+              "value": "SELL"
+            },
+            {
+              "name": "advertiser_name",
+              "value": "={{ $json[\"advertiser\"]?.nickName || $json[\"advertiser\"]?.userNo || 'N/A' }}"
+            }
+          ],
+          "number": [
+            {
+              "name": "price_bob",
+              "value": "={{ Number($json[\"adv\"]?.price) }}"
+            },
+            {
+              "name": "available_usdt",
+              "value": "={{ Number($json[\"adv\"]?.surplusAmount) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "06d4e3ba-687f-4227-91a2-449d681a9a52",
+      "name": "Set SELL fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        384,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9d72bba7-30e3-4e7f-a162-67e508bd7718",
+      "name": "Merge BUY+SELL",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        624,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO p2p.p2p_offers_core (captured_at, trade_type, advertiser_name, price_bob, available_usdt)\nVALUES ({{$json.captured_at}}, {{$json.trade_type}}, {{$json.advertiser_name}}, {{$json.price_bob}}, {{$json.available_usdt}})\nON CONFLICT (captured_minute, trade_type, advertiser_name) DO NOTHING;",
+        "additionalFields": {}
+      },
+      "id": "1d4072ac-5c0e-45c3-ab5d-6b4791d59d7c",
+      "name": "Postgres → INSERT",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        848,
+        208
+      ]
+    }
+  ],
+  "connections": {
+    "Cron 15m": {
+      "main": [
+        [
+          {
+            "node": "HTTP BUY (split=data)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP SELL (split=data)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP BUY (split=data)": {
+      "main": [
+        [
+          {
+            "node": "Limit BUY (2..31)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP SELL (split=data)": {
+      "main": [
+        [
+          {
+            "node": "Limit SELL (2..31)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit BUY (2..31)": {
+      "main": [
+        [
+          {
+            "node": "Set BUY fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit SELL (2..31)": {
+      "main": [
+        [
+          {
+            "node": "Set SELL fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set BUY fields": {
+      "main": [
+        [
+          {
+            "node": "Merge BUY+SELL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set SELL fields": {
+      "main": [
+        [
+          {
+            "node": "Merge BUY+SELL",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge BUY+SELL": {
+      "main": [
+        [
+          {
+            "node": "Postgres → INSERT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "3bff6235-2cbc-439d-98ad-d3cb9796d93c",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-19T15:06:23.260Z",
+      "createdAt": "2025-09-19T15:06:23.260Z",
+      "role": "workflow:owner",
+      "workflowId": "DmBgM68kilfRcHBV",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

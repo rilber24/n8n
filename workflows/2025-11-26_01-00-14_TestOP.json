@@ -1,0 +1,73 @@
+{
+  "updatedAt": "2025-11-07T19:45:35.000Z",
+  "createdAt": "2025-11-07T19:43:23.928Z",
+  "id": "4UBeI4NzX5jtVzx1",
+  "name": "TestOP",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fb936e90-de12-4ee7-9674-82b6a9f56aad",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-openproject-complete.openProject",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9c417021-3639-43ad-906f-56f3c1b4c86e",
+      "name": "List projects",
+      "credentials": {
+        "openProjectApi": {
+          "id": "HajDXjxYNlQMPYls",
+          "name": "OpenProject account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "List projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "bb3580c4-80ec-452d-98e8-7865d6029434",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-07T19:43:23.933Z",
+      "createdAt": "2025-11-07T19:43:23.933Z",
+      "role": "workflow:owner",
+      "workflowId": "4UBeI4NzX5jtVzx1",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

@@ -1,0 +1,548 @@
+{
+  "updatedAt": "2025-11-14T15:09:27.000Z",
+  "createdAt": "2025-10-30T22:42:33.955Z",
+  "id": "VLqR7cZgOsUCPDKO",
+  "name": "promov2.0",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Subir archivo Excel e imagen",
+        "formDescription": "Carga tu archivo Excel con los contactos y la imagen a enviar por WhatsApp.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Archivo Excel",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".xlsx",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Imagen a enviar",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".jpg,.jpeg,.png",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "804d4996-df9a-4e00-957e-ba658f6033ef",
+      "name": "Subir archivo e imagen",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -816,
+        -32
+      ],
+      "webhookId": "b1abbb67-c107-477e-8a09-a6329a7da8cd"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "Archivo_Excel",
+        "options": {}
+      },
+      "id": "dd181b2c-953b-46d8-9995-d0af533a9169",
+      "name": "Leer Excel",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeBoliviaMobile(raw) {\n  if (!raw) return null;\n  let s = String(raw).trim().replace(/[^0-9]/g, '');\n  if (s.startsWith('00')) s = s.slice(2);\n  if (s.startsWith('591')) s = s.slice(3);\n  if (s.length === 9 && s.startsWith('0')) s = s.slice(1);\n  if (s.length > 8) s = s.slice(-8);\n  if (s.length !== 8 || !/^[67]/.test(s)) return null;\n  const full = '591' + s;\n  if (!/^\\d{11}$/.test(full)) return null;\n  return full;\n}\n\nconst seen = new Set();\nconst out = [];\nfor (const item of items) {\n  const tel = normalizeBoliviaMobile(item.json.telefono);\n  if (!tel || seen.has(tel)) continue;\n  seen.add(tel);\n  out.push({ json: { nombre: item.json.nombre, telefono: tel } });\n}\nreturn out;"
+      },
+      "id": "a6b1ca0b-7c8f-4280-a3f9-91beb72aef0d",
+      "name": "Limpiar teléfonos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const binaryData = items[0].binary['Imagen_a_enviar'];\nif (!binaryData) throw new Error('No se encontró la imagen.');\nconst base64String = binaryData.data;\nreturn [{ json: { imagenBase64: base64String, mimeType: binaryData.mimeType } }];"
+      },
+      "id": "a1147a58-76c9-4501-b048-60a1b06bd925",
+      "name": "Convertir imagen a Base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "cc87823c-2d7e-4f3d-8493-454781f02f5f",
+      "name": "Combinar datos e imagen",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -240,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "caption",
+              "type": "string",
+              "value": "={{`*${$json.nombre}* \\n☕🍫 ¡ENVIBOL presente en la FeXco Café y Cacao!\\n📍 Recinto Ferial Alalay – Cochabamba\\n🗓 Del 21 al 23 de noviembre\\nSi eres parte de la industria del café, cacao o alimentos, esta es tu oportunidad para conocer nuestros envases de vidrio y adquirirlos a precio por mayor 🛍️\\n🙌 ¡Te esperamos para seguir fortaleciendo la producción nacional!\\n❤️💛💚 ¡Hecho en Bolivia, con orgullo! 🇧🇴`}}",
+              "id": "859e29f9-f6f7-443e-9f43-f276969034c1"
+            },
+            {
+              "name": "to",
+              "type": "string",
+              "value": "={{$json.telefono}}",
+              "id": "b1b2d85b-4ac5-4397-bea4-ca6bc828747d"
+            },
+            {
+              "name": "imagenBase64",
+              "type": "string",
+              "value": "={{$json.imagenBase64}}",
+              "id": "b94f463f-3761-4453-9170-d0f04535aecf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "41f684f1-5ec0-4356-b9dc-fcebde1f04bf",
+      "name": "Preparar mensaje",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "fcb915cf-1452-47a2-a05c-74347be89638",
+      "name": "Enviar uno por uno",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-image",
+        "instanceName": "Envibol",
+        "remoteJid": "={{$json.to}}",
+        "media": "={{$json.imagenBase64}}",
+        "caption": "={{$json.caption}}",
+        "options_message": {
+          "delay": 5000
+        }
+      },
+      "id": "07ac967d-ce29-4be4-be19-81271c7d332b",
+      "name": "Enviar imagen WhatsApp",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -96
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "evolutionApi": {
+          "id": "W1x347goQjF9uCPr",
+          "name": "Envibol"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"nombre\": \"={{ ($json.data?.message?.imageMessage?.caption?.match(/\\\\*(.*?)\\\\*/)?.[1] || $json.nombre || 'Desconocido').trim() }}\",\n  \"telefono\": \"={{ $json.to || $json.data?.key?.remoteJid?.replace('@s.whatsapp.net','') || 'Sin número' }}\",\n  \"estado\": \"={{ $json.error ? 'Error' : 'Enviado' }}\",\n  \"detalle\": \"={{ $json.data?.message?.imageMessage?.caption || $json.error?.description || 'Sin detalles' }}\",\n  \"codigo\": \"={{ $json.error?.code ? Number($json.error.code) : 200 }}\"\n}",
+        "options": {}
+      },
+      "id": "e8db362a-eb6e-47a5-bcb5-77c1e5a02667",
+      "name": "Registrar éxito",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"nombre\": \"={{ $json.nombre || 'Desconocido' }}\",\n  \"telefono\": \"={{ $json.to || $json.data?.key?.remoteJid?.replace('@s.whatsapp.net','') || 'Sin número' }}\",\n  \"estado\": \"Error\",\n  \"detalle\": \"={{ $json.error?.response?.message?.[0]?.error || $json.error?.response?.message?.[0]?.number || $json.errorDescription || $json.errorMessage || 'Fallo desconocido (sin mensaje)' }}\",\n  \"codigo\": \"={{ $json.error?.response?.status || $json.error?.status || 'N/A' }}\",\n  \"tipo\": \"={{ $json.error?.error || ($json.errorDescription?.includes('timeout') ? 'Timeout' : 'HTTP') }}\",\n  \"fromMe\": \"No\",\n  \"fecha\": \"={{ new Date().toLocaleString('es-BO') }}\"\n}",
+        "options": {}
+      },
+      "id": "52073131-65bd-4801-a52b-ac6cca94a8f5",
+      "name": "Registrar error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 5) + 4 }}",
+        "unit": "seconds"
+      },
+      "id": "0801c037-30f4-47a3-a37e-92302342b79c",
+      "name": "Esperar 5 segundos",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        400,
+        32
+      ],
+      "webhookId": "50c462da-b782-49b4-ab47-4a3e65b5dd67"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "co91A8sb0lX0QUA6",
+          "mode": "list",
+          "cachedResultName": "envibol_logs",
+          "cachedResultUrl": "/projects/DLCF6dMNvaWDIOVx/datatables/co91A8sb0lX0QUA6"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "nombre": "={{ $json.nombre }}",
+            "telefono": "={{ $json.telefono }}",
+            "estado": "={{ $json.estado }}",
+            "detalle": "={{ $json.detalle }}",
+            "codigo": "={{ $json.codigo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "detalle",
+              "displayName": "detalle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "codigo",
+              "displayName": "codigo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -176
+      ],
+      "id": "f4a44b69-90e9-470a-bd43-3bf387c12292",
+      "name": "Guardar en tabla envibol_logs"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "nombre",
+              "value": "={{ $json.data.key.remoteJid }}",
+              "id": "01bc82de-ca8f-49c9-afc9-93daf19f02f5"
+            },
+            {
+              "name": "telefono",
+              "value": "={{ $json.data.message.imageMessage.caption }}",
+              "id": "dd5a0658-09f8-4572-b8bb-0c38a202c734"
+            },
+            {
+              "name": "estado",
+              "value": "Enviado",
+              "id": "ede6288d-999b-4567-980e-dfd1f5de29b4"
+            },
+            {
+              "name": "fecha",
+              "value": "={{new Date().toLocaleString('es-BO')}}",
+              "id": "2cced108-3d26-4031-85f0-278f03cf85e9"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1b7046c1-9cc0-4fdb-b084-e41e15ec44a3",
+      "name": "Registrar éxito1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        48,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        608,
+        32
+      ],
+      "id": "7f37a65e-3638-4841-8e02-df1ebaafc787",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "xlsx",
+        "options": {
+          "fileName": "log_envibol.xlsx",
+          "sheetName": "RegistroEnvios"
+        }
+      },
+      "id": "dfa43645-6795-4e17-b9b4-9bdeb3fcea1f",
+      "name": "Guardar log",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        624,
+        -352
+      ]
+    }
+  ],
+  "connections": {
+    "Subir archivo e imagen": {
+      "main": [
+        [
+          {
+            "node": "Leer Excel",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convertir imagen a Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Excel": {
+      "main": [
+        [
+          {
+            "node": "Limpiar teléfonos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar teléfonos": {
+      "main": [
+        [
+          {
+            "node": "Combinar datos e imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir imagen a Base64": {
+      "main": [
+        [
+          {
+            "node": "Combinar datos e imagen",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combinar datos e imagen": {
+      "main": [
+        [
+          {
+            "node": "Preparar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar mensaje": {
+      "main": [
+        [
+          {
+            "node": "Enviar uno por uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar uno por uno": {
+      "main": [
+        [
+          {
+            "node": "Enviar imagen WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Enviar imagen WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Esperar 5 segundos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Registrar éxito",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar éxito": {
+      "main": [
+        [
+          {
+            "node": "Guardar en tabla envibol_logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar error": {
+      "main": [
+        [
+          {
+            "node": "Guardar en tabla envibol_logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar 5 segundos": {
+      "main": [
+        [
+          {
+            "node": "Enviar uno por uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "cbd9775d-e3b3-411f-9f19-5607f2be2964",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-30T22:42:33.962Z",
+      "createdAt": "2025-10-30T22:42:33.962Z",
+      "role": "workflow:owner",
+      "workflowId": "VLqR7cZgOsUCPDKO",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

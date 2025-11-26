@@ -1,0 +1,265 @@
+{
+  "updatedAt": "2025-10-03T19:32:15.000Z",
+  "createdAt": "2025-10-01T21:43:54.166Z",
+  "id": "PdMwu96DHm6cbCUZ",
+  "name": "P2P 24h → QuickChart URL → Evolution (compat)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "functionCode": "function pad(n){return String(n).padStart(2,'0');}\nfunction fmtLocal(dt){\n  const tz = 'America/La_Paz';\n  const d = new Date(dt.toLocaleString('en-US', { timeZone: tz }));\n  const Y = d.getFullYear();\n  const M = pad(d.getMonth()+1);\n  const D = pad(d.getDate());\n  const h = pad(d.getHours());\n  const m = pad(d.getMinutes());\n  const s = pad(d.getSeconds());\n  return `${Y}-${M}-${D} ${h}:${m}:${s}`;\n}\nconst end = new Date(); end.setSeconds(0,0);\nconst start = new Date(end.getTime() - 24*3600*1000); start.setSeconds(0,0);\nconst startLocal = fmtLocal(start);\nconst endLocal   = fmtLocal(end);\nconst query = `SELECT 'Compra' AS serie, fecha_hora, precio\nFROM compra_bob\nWHERE fecha_hora >= '${startLocal}' AND fecha_hora <= '${endLocal}'\nUNION ALL\nSELECT 'Venta'  AS serie, fecha_hora, precio\nFROM venta_bob\nWHERE fecha_hora >= '${startLocal}' AND fecha_hora <= '${endLocal}'\nORDER BY fecha_hora ASC;`;\nreturn [{ json: { startLocal, endLocal, query } }];"
+      },
+      "id": "e958aaac-fe39-4d12-b28b-b3ca699cf460",
+      "name": "Function (SQL)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{$json[\"query\"]}}"
+      },
+      "id": "2267016a-6374-400f-bb7a-72c5827c1787",
+      "name": "MySQL",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        160
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const tz = 'America/La_Paz';\nconst end = new Date(); end.setSeconds(0,0);\nconst start = new Date(end.getTime() - 24*3600*1000); start.setSeconds(0,0);\nconst fmt = (d) => d.toLocaleString('es-BO', { timeZone: tz });\nif (!items || items.length === 0) { throw new Error('Sin filas desde MySQL para el rango de 24h.'); }\nconst compra = [], venta = [];\nconst toTs = (s) => { const t = Date.parse(String(s)); return Number.isFinite(t) ? t : null; };\nfor (const it of items) {\n  const r = it.json || {};\n  const x = toTs(r.fecha_hora);\n  const y = (r.precio != null) ? Number(r.precio) : null;\n  if (!x || !Number.isFinite(y)) continue;\n  const serie = String(r.serie || '').toLowerCase();\n  if (serie.startsWith('comp')) compra.push({ x, y });\n  else if (serie.startsWith('vent')) venta.push({ x, y });\n}\nif (compra.length === 0 && venta.length === 0) { throw new Error('Filas recibidas pero ninguna válida (serie/fecha_hora/precio).'); }\ncompra.sort((a,b)=>a.x-b.x); venta.sort((a,b)=>a.x-b.x);\nconst all = [...compra, ...venta].map(p => p.y);\nconst minY = Math.min(...all), maxY = Math.max(...all);\nconst padY = Math.max((maxY - minY) * 0.10, 0.02);\nconst suggestedMin = +(minY - padY).toFixed(2);\nconst suggestedMax = +(maxY + padY).toFixed(2);\nconst last = arr => arr.length ? arr[arr.length - 1].y : null;\nconst first = arr => arr.length ? arr[0].y : null;\nconst lCompra = last(compra), fCompra = first(compra);\nconst lVenta  = last(venta),  fVenta  = first(venta);\nconst dCompra = (lCompra!=null && fCompra!=null) ? (lCompra - fCompra) : null;\nconst dVenta  = (lVenta!=null  && fVenta!=null ) ? (lVenta  - fVenta ) : null;\nconst p  = v => v==null ? '–' : `$${v.toFixed(2)}`;\nconst pc = v => v==null ? ''  : (v>=0?`▲ +$${v.toFixed(2)}`:`▼ $${v.toFixed(2)}`);\nconst title = 'Precios P2P: Compra y Venta (BOB)';\nconst subtitle = `Últimas 24h: ${fmt(start)} → ${fmt(end)}`;\nconst caption = `${title}\\n${subtitle}\\nCompra: ${p(lCompra)} (${pc(dCompra)}) | Venta: ${p(lVenta)} (${pc(dVenta)})\\nRango 24h: ${p(minY)} – ${p(maxY)}`;\nconst green = '#2ecc71', red = '#e74c3c';\nconst chartConfig = {\n  type: 'line',\n  data: { datasets: [\n    { label:'Precio Compra', data:compra, borderColor:green, backgroundColor:green, tension:0.2, pointRadius:2, pointHoverRadius:3, spanGaps:true },\n    { label:'Precio Venta',  data:venta,  borderColor:red,   backgroundColor:red,   tension:0.2, pointRadius:2, pointHoverRadius:3, spanGaps:true }\n  ]},\n  options: {\n    parsing:false, animation:false,\n    layout:{ padding:{ top:10, right:16, bottom:8, left:8 } },\n    elements:{ line:{ borderWidth:2 } },\n    plugins:{\n      title:{ display:true, text:title, font:{ size:16, weight:'bold' } },\n      subtitle:{ display:true, text:subtitle, color:'#4b5563', font:{ size:12 } },\n      legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:8 } },\n      tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: $${Number(ctx.parsed.y).toFixed(2)}` } }\n    },\n    scales:{\n      x:{ type:'time', time:{ unit:'hour', tooltipFormat:'yyyy-MM-dd HH:mm' }, title:{ display:true, text:'Hora' }, ticks:{ maxRotation:0, autoSkip:true } },\n      y:{ title:{ display:true, text:'Precio (USDT)' }, suggestedMin, suggestedMax, ticks:{ callback:(v)=>`$${Number(v).toFixed(2)}` }, grid:{ color:'#e5e7eb' } }\n    }\n  }\n};\nreturn [{ json: { chartConfig, caption } }];"
+      },
+      "id": "8b3fc5fc-1aa5-4787-a61c-0f121ca474e5",
+      "name": "Function (Chart)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        96,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://quickchart.io/chart/create",
+        "jsonParameters": true,
+        "options": {
+          "timeout": 60000
+        },
+        "bodyParametersJson": "={{ ({\n  chart: $json.chartConfig,\n  format: 'jpg',\n  backgroundColor: 'white',\n  width: 1200,\n  height: 600,\n  version: '4.4.0'\n}) }}"
+      },
+      "id": "450164c9-0965-4a91-a96c-21e0d1cfaedd",
+      "name": "HTTP Request (QuickChart create)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        304,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "caption",
+              "value": "={{$json[\"caption\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "daac0758-a96e-4831-804a-0f07de3c5c40",
+      "name": "Set (Caption)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        304,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "id": "1ab35c99-1a23-49b8-91ee-e79bb6a95c53",
+      "name": "Merge (URL + Caption)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        528,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-image",
+        "instanceName": "mm",
+        "remoteJid": "59167670158",
+        "media": "={{ $json.url }}",
+        "caption": "={{ $json.caption }}",
+        "options_message": {
+          "delay": 6000
+        }
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        704,
+        160
+      ],
+      "id": "4ff6d0dc-5cd1-4fe9-8019-6a74531c7619",
+      "name": "Enviar imagem",
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7,
+              "triggerAtMinute": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -624,
+        160
+      ],
+      "id": "8188cfbb-722d-4b98-8f5f-f792ab80ba7e",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+    "Function (SQL)": {
+      "main": [
+        [
+          {
+            "node": "MySQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL": {
+      "main": [
+        [
+          {
+            "node": "Function (Chart)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function (Chart)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (QuickChart create)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set (Caption)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (QuickChart create)": {
+      "main": [
+        [
+          {
+            "node": "Merge (URL + Caption)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set (Caption)": {
+      "main": [
+        [
+          {
+            "node": "Merge (URL + Caption)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge (URL + Caption)": {
+      "main": [
+        [
+          {
+            "node": "Enviar imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Function (SQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "3086c7ef-b293-45fe-86eb-6652b3b012b8",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-10-01T21:43:54.168Z",
+      "createdAt": "2025-10-01T21:43:54.168Z",
+      "role": "workflow:owner",
+      "workflowId": "PdMwu96DHm6cbCUZ",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

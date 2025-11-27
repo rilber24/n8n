@@ -1,0 +1,94 @@
+{
+  "updatedAt": "2025-10-08T21:22:04.000Z",
+  "createdAt": "2025-10-08T21:17:01.941Z",
+  "id": "QdIppMzAZQAHEvDF",
+  "name": "Pruebas USDT BOB - Agente + Tools (compra, venta, spread)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, precio, fecha_hora\nFROM compra_bob\nORDER BY id DESC\nLIMIT {{ $json.limit || 10 }};",
+        "options": {}
+      },
+      "id": "ff45f0f6-e3fb-465b-9475-013ea5c2780b",
+      "name": "Select compra",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, precio, fecha_hora\nFROM venta_bob\nORDER BY id DESC\nLIMIT {{ $json.limit || 10 }};",
+        "options": {}
+      },
+      "id": "0c40b202-63d9-4338-bef7-761a64ae5f08",
+      "name": "Select venta",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        0,
+        208
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  (SELECT precio FROM venta_bob  ORDER BY id DESC LIMIT 1) AS venta,\n  (SELECT fecha_hora FROM venta_bob  ORDER BY id DESC LIMIT 1) AS fecha_venta,\n  (SELECT precio FROM compra_bob ORDER BY id DESC LIMIT 1) AS compra,\n  (SELECT fecha_hora FROM compra_bob ORDER BY id DESC LIMIT 1) AS fecha_compra,\n  ((SELECT precio FROM venta_bob  ORDER BY id DESC LIMIT 1) -\n   (SELECT precio FROM compra_bob ORDER BY id DESC LIMIT 1)) AS spread;",
+        "options": {}
+      },
+      "id": "8a39ccab-14a6-442c-97ae-8c6db4bea5cd",
+      "name": "Spread actual",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        0,
+        400
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    }
+  ],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "abfaf436-dd60-4538-9d47-ac9f17a9973c",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-08T21:17:01.943Z",
+      "createdAt": "2025-10-08T21:17:01.943Z",
+      "role": "workflow:owner",
+      "workflowId": "QdIppMzAZQAHEvDF",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

@@ -1,0 +1,319 @@
+{
+  "updatedAt": "2025-09-05T12:56:22.000Z",
+  "createdAt": "2025-09-05T03:33:10.796Z",
+  "id": "O8YaTPTmpPr31uxq",
+  "name": "My workflow 31",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "621b7306-d504-4d75-b89e-963fc389a335",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "evBaseUrl",
+              "value": "https://hooks.ril.serviciocliente.site"
+            },
+            {
+              "name": "evApiKey",
+              "value": "471D0C16CA24-4397-A5EE-F596DB01669E"
+            },
+            {
+              "name": "evInstance",
+              "value": "mm"
+            },
+            {
+              "name": "areaId",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2249cf67-fd50-4c4d-85d3-f5f850e4b405",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -1104,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://apirrhh.envibol.site/api/v1/N8n/Areas",
+        "options": {}
+      },
+      "id": "eb4db3f6-8f85-4025-9b03-71c99af67d60",
+      "name": "HTTP Areas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -912,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://apirrhh.envibol.site/api/v1/N8n/GetUnidad/' + $node[\"Set Params\"].json.areaId }}",
+        "options": {}
+      },
+      "id": "e5d893ff-f4b7-4eb7-b3f6-4f6012f2aa27",
+      "name": "HTTP GetUnidad",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -736,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "id": "c34b5798-96ee-45bb-89e2-a3bbbe2c6119",
+      "name": "Split Out Items",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "areaName",
+              "value": "="
+            },
+            {
+              "name": "fullName",
+              "value": "="
+            },
+            {
+              "name": "number",
+              "value": "="
+            },
+            {
+              "name": "message",
+              "value": "=={{ '¡Hola, ' + $json.nombre + '! 👋\\n\\n' +\n    'Buenos días y un excelente inicio de jornada. En ENVIBOL, valoramos mucho tu compromiso en el área de ' +\n    $json.descripcion + '. 💪' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5b4aa7ca-377f-4234-bf32-faae16a99b61",
+      "name": "Set Normalize + Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "b31f291d-39d3-4dd3-b84d-9f6814183903",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cd239cf1-5dcb-48eb-b09a-2d7ba9ac78a2",
+      "name": "IF Tel válido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $node[\"Set Params\"].json.evBaseUrl + '/message/sendText/' + $node[\"Set Params\"].json.evInstance }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=message",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "6daf6186-b48f-41dc-b0ea-152e9e8132fe",
+      "name": "Enviar Mensajes (HTTP sendText)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "skipped",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bdb948bd-0477-402e-8e2e-063766db4dde",
+      "name": "No-op (tel inválido)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        0,
+        128
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Params": {
+      "main": [
+        [
+          {
+            "node": "HTTP Areas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Areas": {
+      "main": [
+        [
+          {
+            "node": "HTTP GetUnidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP GetUnidad": {
+      "main": [
+        [
+          {
+            "node": "Split Out Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Items": {
+      "main": [
+        [
+          {
+            "node": "Set Normalize + Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Normalize + Message": {
+      "main": [
+        [
+          {
+            "node": "IF Tel válido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Tel válido": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensajes (HTTP sendText)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No-op (tel inválido)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "25944f2b-87cc-4b77-9749-eced9897571a",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-05T03:33:10.801Z",
+      "createdAt": "2025-09-05T03:33:10.801Z",
+      "role": "workflow:owner",
+      "workflowId": "O8YaTPTmpPr31uxq",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

@@ -1,0 +1,393 @@
+{
+  "updatedAt": "2025-09-03T20:29:19.000Z",
+  "createdAt": "2025-09-03T20:24:46.871Z",
+  "id": "RrzDrWHrLW2sJJtB",
+  "name": "My workflow 12",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c5e83788-c960-48a4-ab29-e9afa1ca1ea5",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1344,
+        64
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f95960c4-6f71-4014-8bc7-f4dfb796fd8e",
+      "name": "Cron 22:10",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 2,
+      "position": [
+        -1344,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough",
+        "options": {}
+      },
+      "id": "64e343fb-7d66-41df-a138-9221b43f37f1",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "78da37d0-dacb-4434-b31b-d27c52722bfe",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -896,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://apirrhh.envibol.site/api/v1/N8n/GetUnidad/' + $json.areaId }}",
+        "options": {}
+      },
+      "id": "19f2c591-264e-454f-bb56-c030a7b15820",
+      "name": "HTTP GetUnidad",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        144
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e342968a-4267-4548-9464-a6c17a0e87a2",
+      "name": "Function Expand",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "={{$json.batchSize}}",
+        "options": {}
+      },
+      "id": "c8ddf5a5-03ac-4402-a6d0-2063db955490",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.modo}}",
+              "operation": "equal",
+              "value2": "text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b7236ea-b0bc-483b-bb0c-c84d967b3a09",
+      "name": "IF Text",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.modo}}",
+              "operation": "equal",
+              "value2": "image"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6eb2d2f5-4ba4-4c85-b105-397ffb92d3d8",
+      "name": "IF Image",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        0,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.modo}}",
+              "operation": "equal",
+              "value2": "document"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "edc817aa-2a26-4e3e-b03e-6244a4cab37c",
+      "name": "IF Document",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        0,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{ ($json.evBase || '').trim().replace(/\\/+$/,'') + '/message/sendText/' + ($json.evInstance || '').trim() + '?apikey=' + encodeURIComponent(($json.evApikey || '').trim()) }}",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\"number\": $json.to, \"text\": $json.message}",
+        "headerParametersJson": "={\"Content-Type\":\"application/json\"}"
+      },
+      "id": "79f9a726-977d-469b-8dd4-2979dd8bfb1e",
+      "name": "Send Text (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{ ($json.evBase || '').trim().replace(/\\/+$/,'') + '/message/sendImage/' + ($json.evInstance || '').trim() + '?apikey=' + encodeURIComponent(($json.evApikey || '').trim()) }}",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\"number\": $json.to, \"url\": $json.mediaUrl, \"caption\": $json.message}",
+        "headerParametersJson": "={\"Content-Type\":\"application/json\"}"
+      },
+      "id": "1cdea477-9244-4ebb-9165-a0af22b02c7c",
+      "name": "Send Image (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{ ($json.evBase || '').trim().replace(/\\/+$/,'') + '/message/sendDocument/' + ($json.evInstance || '').trim() + '?apikey=' + encodeURIComponent(($json.evApikey || '').trim()) }}",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\"number\": $json.to, \"url\": $json.mediaUrl, \"fileName\": $json.fileName, \"caption\": $json.message}",
+        "headerParametersJson": "={\"Content-Type\":\"application/json\"}"
+      },
+      "id": "8da532c3-21b1-44bc-a943-912b1a4732d3",
+      "name": "Send Document (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        544
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "id": "d699bf4b-cab5-45e5-8ed6-b104a7df201d",
+      "name": "Function Tally",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        464,
+        320
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2e6cc7cb-1ccc-4f4e-8402-14e8b3327d9f",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        640,
+        320
+      ],
+      "webhookId": "ecdbf036-b494-4a23-9849-d34e0e3eabb2"
+    },
+    {
+      "parameters": {},
+      "id": "e89e637c-a8cd-44b0-8982-48b8aa191711",
+      "name": "Function Build Summary",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{ ($json.evBase || '').trim().replace(/\\/+$/,'') + '/message/sendText/' + ($json.evInstance || '').trim() + '?apikey=' + encodeURIComponent(($json.evApikey || '').trim()) }}",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\"number\": $json.to, \"text\": $json.message}",
+        "headerParametersJson": "={\"Content-Type\":\"application/json\"}"
+      },
+      "id": "d2797f36-3e42-4ccf-97eb-169c4f67d5c4",
+      "name": "Send Summary (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9166bfe2-0abe-4a45-8a15-c633648f3198",
+      "name": "Function Cleanup",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Set Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Params": {
+      "main": [
+        [
+          {
+            "node": "HTTP GetUnidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "IF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Text": {
+      "main": [
+        [
+          {
+            "node": "Send Text (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Image": {
+      "main": [
+        [
+          {
+            "node": "Send Image (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Document": {
+      "main": [
+        [
+          {
+            "node": "Send Document (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "2668f91a-d31d-4061-a971-e691471cdaa7",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-03T20:24:46.877Z",
+      "createdAt": "2025-09-03T20:24:46.877Z",
+      "role": "workflow:owner",
+      "workflowId": "RrzDrWHrLW2sJJtB",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

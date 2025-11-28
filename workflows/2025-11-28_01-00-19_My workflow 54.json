@@ -1,0 +1,82 @@
+{
+  "updatedAt": "2025-09-24T15:36:18.000Z",
+  "createdAt": "2025-09-24T15:11:02.295Z",
+  "id": "5gHSQad2B42Ikodi",
+  "name": "My workflow 54",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "60f60986-16bb-4af1-993a-18793fd159e5",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "baf99f3b-9460-417c-8856-92f06186837d",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "273bce07-c380-4f4f-8c10-eb4bfd75c1a4",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-24T15:11:02.299Z",
+      "createdAt": "2025-09-24T15:11:02.299Z",
+      "role": "workflow:owner",
+      "workflowId": "5gHSQad2B42Ikodi",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

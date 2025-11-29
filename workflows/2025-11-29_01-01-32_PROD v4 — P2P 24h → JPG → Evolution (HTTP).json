@@ -1,0 +1,217 @@
+{
+  "updatedAt": "2025-09-30T20:59:35.000Z",
+  "createdAt": "2025-09-30T19:27:03.639Z",
+  "id": "TYILnCW26eW3boV4",
+  "name": "PROD v4 — P2P 24h → JPG → Evolution (HTTP)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f7ab28ed-bc8a-4e29-92c2-eae2e049430e",
+      "name": "▶️ Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function pad(n){return String(n).padStart(2,'0')}\nfunction toMysql(dt){return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`}\n\nconst tz = 'America/La_Paz';\nconst end = new Date(); end.setSeconds(0,0);\nconst start = new Date(end.getTime() - 24*3600*1000); start.setSeconds(0,0);\n\n// Solo para mostrar bonito en el subtítulo\nconst fmt = (d) => d.toLocaleString('es-BO', { timeZone: tz });\n\nreturn [{\n  startLocal: toMysql(start),\n  endLocal:   toMysql(end),\n  subtitleStart: fmt(start),\n  subtitleEnd:   fmt(end),\n  title: 'Precios P2P: Compra y Venta (BOB)'\n}];\n"
+      },
+      "id": "ff1f6ecc-768a-4fcd-9db5-80ea66e630f4",
+      "name": "⚙️ Params (ventana 24h)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'Compra' AS serie, fecha_hora, precio\nFROM compra_bob\nWHERE fecha_hora >= '{{$json[\"startLocal\"]}}'\n  AND fecha_hora <= '{{$json[\"endLocal\"]}}'\nUNION ALL\nSELECT 'Venta'  AS serie, fecha_hora, precio\nFROM venta_bob\nWHERE fecha_hora >= '{{$json[\"startLocal\"]}}'\n  AND fecha_hora <= '{{$json[\"endLocal\"]}}'\nORDER BY fecha_hora ASC;",
+        "options": {}
+      },
+      "id": "df232f6c-6125-45b3-808a-efe671f5eea1",
+      "name": "🗄️ MySQL — serie 24h",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        160
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convierte filas MySQL -> datasets para Chart.js (x = timestamp ms, y = precio)\nconst compra = [];\nconst venta  = [];\n\n// Parse seguro de fecha (acepta ISO o 'YYYY-MM-DD HH:mm:ss')\nconst toTs = (s) => {\n  if (!s) return null;\n  const t = Date.parse(String(s));\n  return Number.isFinite(t) ? t : null;\n};\n\n// items[] viene del nodo MySQL — serie 24h\nfor (const it of items) {\n  const r = it.json || {};\n  const x = toTs(r.fecha_hora);\n  const y = (r.precio != null) ? Number(r.precio) : null;\n  if (!x || !Number.isFinite(y)) continue;\n  (r.serie === 'Compra' ? compra : venta).push({ x, y });\n}\n\n// Ordenar por tiempo\nconst byX = (a,b)=>a.x-b.x;\ncompra.sort(byX);\nventa.sort(byX);\n\n// Rango Y con padding\nconst all = [...compra, ...venta].map(p => p.y);\nconst minY = all.length ? Math.min(...all) : 0;\nconst maxY = all.length ? Math.max(...all) : 1;\nconst pad  = all.length ? Math.max((maxY - minY) * 0.10, 0.02) : 0.1;\nconst suggestedMin = +(minY - pad).toFixed(2);\nconst suggestedMax = +(maxY + pad).toFixed(2);\n\n// Título y subtítulo (últimas 24h en horario La Paz)\nconst tz = 'America/La_Paz';\nconst end = new Date(); end.setSeconds(0,0);\nconst start = new Date(end.getTime() - 24*3600*1000); start.setSeconds(0,0);\nconst fmt = (d) => d.toLocaleString('es-BO', { timeZone: tz });\nconst title = 'Precios P2P: Compra y Venta (BOB)';\nconst subtitle = `Mostrando últimas 24 horas: ${fmt(start)} hasta ${fmt(end)}`;\n\nconst green = '#2ecc71';\nconst red   = '#e74c3c';\n\nconst chartConfig = {\n  type: 'line',\n  data: { datasets: [\n    { label:'Precio Compra', data:compra, borderColor:green, backgroundColor:green,\n      tension:0.2, pointRadius:2, pointHoverRadius:3, pointBorderColor:green,\n      pointBackgroundColor:'#fff', pointBorderWidth:1, spanGaps:true },\n    { label:'Precio Venta',  data:venta,  borderColor:red,   backgroundColor:red,\n      tension:0.2, pointRadius:2, pointHoverRadius:3, pointBorderColor:red,\n      pointBackgroundColor:'#fff', pointBorderWidth:1, spanGaps:true }\n  ]},\n  options: {\n    parsing:false, animation:false,\n    layout:{ padding:{ top:10, right:16, bottom:8, left:8 } },\n    elements:{ line:{ borderWidth:2 } },\n    plugins:{\n      title:{ display:true, text:title, font:{ size:16, weight:'bold' } },\n      subtitle:{ display:true, text:subtitle, color:'#4b5563', font:{ size:12 } },\n      legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:8 } },\n      tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: $${Number(ctx.parsed.y).toFixed(2)}` } }\n    },\n    scales:{\n      x:{ type:'time', time:{ unit:'hour', tooltipFormat:'yyyy-MM-dd HH:mm' },\n          title:{ display:true, text:'Hora' }, ticks:{ maxRotation:0, autoSkip:true } },\n      y:{ title:{ display:true, text:'Precio (USDT)' }, suggestedMin, suggestedMax,\n          ticks:{ callback:(v)=>`$${Number(v).toFixed(2)}` }, grid:{ color:'#e5e7eb' } }\n    }\n  }\n};\n\nconst caption = `${title}\\n${subtitle}`;\nreturn [{ chartConfig, caption }];"
+      },
+      "id": "ab68f317-d84b-4402-851d-48544053201c",
+      "name": "🎨 Build Chart.js (24h estilo)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://quickchart.io/chart",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { format: 'jpg', backgroundColor: 'white', width: 1200, height: 600, chart: $json['chartConfig'], version: '4.4.0' } }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "e3765b99-2d87-47f0-a72d-91a1bccf2c6f",
+      "name": "🖼️ QuickChart → JPG (binario)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -256,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "fileName": "reporte_p2p_24h.jpg",
+        "options": {}
+      },
+      "id": "94269883-23fa-46b5-900d-4be7db849148",
+      "name": "💾 Guardar JPG (opcional)",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.ril.serviciocliente.site/message/sendMedia/mm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "471D0C16CA24-4397-A5EE-F596DB01669E"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=={{ {\n  number: \"59172896612\",\n  mediatype: \"image\",\n  mimetype: \"image/jpeg\",\ncaption: $node[\"🎨 Build Chart.js (24h estilo)\"].json.caption,\n  media: $binary.data?.data || $binary.image?.data,\n  fileName: \"reporte_p2p_24h.jpg\"\n} }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "2eb9ede7-b2f6-4b75-9586-88e0f90f9b90",
+      "name": "📤 Evolution — HTTP (imagen)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "▶️ Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Params (ventana 24h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Params (ventana 24h)": {
+      "main": [
+        [
+          {
+            "node": "🗄️ MySQL — serie 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🗄️ MySQL — serie 24h": {
+      "main": [
+        [
+          {
+            "node": "🎨 Build Chart.js (24h estilo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎨 Build Chart.js (24h estilo)": {
+      "main": [
+        [
+          {
+            "node": "🖼️ QuickChart → JPG (binario)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🖼️ QuickChart → JPG (binario)": {
+      "main": [
+        [
+          {
+            "node": "📤 Evolution — HTTP (imagen)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "💾 Guardar JPG (opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "7341941d-b01f-40a2-af73-c6729d251d81",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-30T19:27:03.644Z",
+      "createdAt": "2025-09-30T19:27:03.644Z",
+      "role": "workflow:owner",
+      "workflowId": "TYILnCW26eW3boV4",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

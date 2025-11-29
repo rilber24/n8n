@@ -1,0 +1,148 @@
+{
+  "updatedAt": "2025-09-26T19:03:33.000Z",
+  "createdAt": "2025-09-26T17:32:48.239Z",
+  "id": "SHpXvBwfE7yypg6y",
+  "name": "Reporte Diario P2P 24h → QuickChart PNG (para Evolution)",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 23,
+              "minute": 59
+            }
+          ]
+        }
+      },
+      "id": "ad472567-a01e-4cb7-b8cc-62a4ff6b506a",
+      "name": "⏰ Cron Diario (23:59)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'Compra' AS serie, fecha_hora, precio\nFROM compra_bob\nWHERE fecha_hora >= NOW() - INTERVAL 24 HOUR\nUNION ALL\nSELECT 'Venta'  AS serie, fecha_hora, precio\nFROM venta_bob\nWHERE fecha_hora >= NOW() - INTERVAL 24 HOUR\nORDER BY fecha_hora ASC;",
+        "options": {}
+      },
+      "id": "93d2e12d-378e-48a5-bbad-6c2e28062f28",
+      "name": "🗄️ MySQL 24h (Compra & Venta)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        272,
+        0
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javascript"
+      },
+      "id": "16e4eb1f-5ee3-4f59-9bb5-5bad568e5768",
+      "name": "🧩 Code → QuickChart URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json[\"chartUrl\"] }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "50355645-3a7d-43a5-863a-06f76deacb06",
+      "name": "🖼️ QuickChart → PNG (binario)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "5782425d-aa82-49fe-8e08-2f58c78c325a",
+      "name": "🔎 Verificar binario (opcional)",
+      "type": "n8n-nodes-base.binaryData",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "⏰ Cron Diario (23:59)": {
+      "main": [
+        [
+          {
+            "node": "🗄️ MySQL 24h (Compra & Venta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🗄️ MySQL 24h (Compra & Venta)": {
+      "main": [
+        [
+          {
+            "node": "🧩 Code → QuickChart URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧩 Code → QuickChart URL": {
+      "main": [
+        [
+          {
+            "node": "🖼️ QuickChart → PNG (binario)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "c708a9f8-cdb5-41e6-8d2d-0ee8da336bd8",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-26T17:32:48.245Z",
+      "createdAt": "2025-09-26T17:32:48.245Z",
+      "role": "workflow:owner",
+      "workflowId": "SHpXvBwfE7yypg6y",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

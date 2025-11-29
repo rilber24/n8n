@@ -1,0 +1,160 @@
+{
+  "updatedAt": "2025-09-26T17:32:14.000Z",
+  "createdAt": "2025-09-26T16:59:19.525Z",
+  "id": "6YPgQLpnO40y2h5a",
+  "name": "Reporte Diario P2P 24h → WhatsApp (Evolution API)",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 23,
+              "minute": 59
+            }
+          ]
+        }
+      },
+      "id": "32ffd37e-1a51-4ec7-abe8-ecf6acfcab1e",
+      "name": "⏰ Cron Diario (23:59)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'Compra' AS serie, fecha_hora, precio\nFROM compra_bob\nWHERE fecha_hora >= NOW() - INTERVAL 24 HOUR\nUNION ALL\nSELECT 'Venta'  AS serie, fecha_hora, precio\nFROM venta_bob\nWHERE fecha_hora >= NOW() - INTERVAL 24 HOUR\nORDER BY fecha_hora ASC;\n",
+        "options": {}
+      },
+      "id": "2e9a56a1-b65d-4938-bfc3-93845bde3460",
+      "name": "🗄️ MySQL 24h (Compra & Venta)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -32
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "E3NXQrJaLGKMyUsb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "id": "fcb0a8b1-06d2-4cf9-a137-e05c62ea381d",
+      "name": "🧩 Code → QuickChart URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json[\"EVO_BASE\"]}}/messages/image?session={{$json[\"EVO_SESSION\"]}}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "cd3e680b-4452-467b-abe9-e5c9180b4941",
+      "name": "📤 EvolutionAPI: Enviar Imagen (URL)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        816,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-image",
+        "instanceName": "mm",
+        "options_message": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -32
+      ],
+      "id": "dba8a9c8-6258-41bd-9e64-cca96e662764",
+      "name": "Enviar imagem",
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "Evolution account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Cron Diario (23:59)": {
+      "main": [
+        [
+          {
+            "node": "🗄️ MySQL 24h (Compra & Venta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🗄️ MySQL 24h (Compra & Venta)": {
+      "main": [
+        [
+          {
+            "node": "🧩 Code → QuickChart URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧩 Code → QuickChart URL": {
+      "main": [
+        [
+          {
+            "node": "Enviar imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "44f7fd7f-81f7-4fc2-bd7e-8ae1550e9bf5",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-26T16:59:19.536Z",
+      "createdAt": "2025-09-26T16:59:19.536Z",
+      "role": "workflow:owner",
+      "workflowId": "6YPgQLpnO40y2h5a",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

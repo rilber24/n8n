@@ -1,0 +1,302 @@
+{
+  "updatedAt": "2025-09-05T03:17:28.000Z",
+  "createdAt": "2025-09-05T03:14:29.732Z",
+  "id": "E5b7UaxOo5Vu2Aut",
+  "name": "My workflow 28",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "d6ecf7a4-0e9f-45ec-a1b2-f894f27e8a00",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "evBaseUrl",
+              "value": "https://YOUR-EVOLUTION-URL"
+            },
+            {
+              "name": "evApiKey",
+              "value": "YOUR_API_KEY"
+            },
+            {
+              "name": "evInstance",
+              "value": "YOUR_INSTANCE"
+            },
+            {
+              "name": "areaId",
+              "value": "3"
+            },
+            {
+              "name": "body",
+              "value": "Estimad@, este es un aviso de ENVIBOL.\nGracias por su atención."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9ee60bb4-d113-4f83-ab77-594a9523376e",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -1296,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://apirrhh.envibol.site/api/v1/N8n/Areas",
+        "options": {}
+      },
+      "id": "103ee1b4-f7e3-4de8-8a8e-25f7917d76c5",
+      "name": "HTTP Areas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1104,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "98b69e49-4b9a-400f-b7ba-43ccf492126b",
+      "name": "Pick Area",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://apirrhh.envibol.site/api/v1/N8n/GetUnidad/' + $json.areaId }}",
+        "options": {}
+      },
+      "id": "479ab185-fda7-4997-b861-d9747ec743e0",
+      "name": "HTTP GetUnidad",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -752,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c7d174e6-26c7-46f5-abda-30116741d45c",
+      "name": "Split Out Items",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "fullName",
+              "value": "={{ [$json.nombre,$json.apellidoPaterno||$json.apellido,$json.apellidoMaterno].filter(Boolean).join(' ').replace(/\\s+/g,' ') }}"
+            },
+            {
+              "name": "number",
+              "value": "={{ ($json.celular||'').replace(/\\D/g,'') }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ 'Hola ' + ([$json.nombre,$json.apellidoPaterno||$json.apellido,$json.apellidoMaterno].filter(Boolean).join(' ').replace(/\\s+/g,' ')) + ' \\uD83D\\uDC4B\\nDel área ' + $('Pick Area').item.json.areaName + '.\\n' + $('Set Params').item.json.body }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adef0b6d-0be2-46d2-999a-f7cc50575fa9",
+      "name": "Set Normalize + Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.number }}",
+              "operation": "regex",
+              "value2": "^591\\d{8}$"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "be7df720-0677-4a07-973e-c519be4e9d13",
+      "name": "IF Tel válido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Set Params').item.json.evBaseUrl + '/message/sendText/' + $('Set Params').item.json.evInstance }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "846521e9-3a68-4b45-ac60-a35a54edc47d",
+      "name": "Enviar Mensajes (send-text)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -16,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "skipped",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4fbc0eba-a993-4494-af29-12b0bf9946f0",
+      "name": "No-op (tel inválido)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Params": {
+      "main": [
+        [
+          {
+            "node": "HTTP Areas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP GetUnidad": {
+      "main": [
+        [
+          {
+            "node": "Split Out Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Items": {
+      "main": [
+        [
+          {
+            "node": "Set Normalize + Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Normalize + Message": {
+      "main": [
+        [
+          {
+            "node": "IF Tel válido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Tel válido": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensajes (send-text)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No-op (tel inválido)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "b202ab2e-2dea-44a2-8513-3ffbaa3035db",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-05T03:14:29.737Z",
+      "createdAt": "2025-09-05T03:14:29.737Z",
+      "role": "workflow:owner",
+      "workflowId": "E5b7UaxOo5Vu2Aut",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

@@ -1,0 +1,207 @@
+{
+  "updatedAt": "2025-11-12T21:57:34.000Z",
+  "createdAt": "2025-11-11T01:17:55.862Z",
+  "id": "EaO1sSNtIAFbNsil",
+  "name": "PENDIENTE-DESPACHADO 3 turnos",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 6
+            },
+            {},
+            {
+              "hour": 22
+            }
+          ]
+        }
+      },
+      "id": "47a4f40b-25c0-47ff-a396-0a0e5abd476b",
+      "name": "Ejecutar 3 Turnos (Cron)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "lj2Pqgu3YiyEfQcw",
+          "mode": "list",
+          "cachedResultName": "pruebas",
+          "cachedResultUrl": "/projects/DLCF6dMNvaWDIOVx/datatables/lj2Pqgu3YiyEfQcw"
+        },
+        "returnAll": true
+      },
+      "id": "4c6c7bb9-460c-4038-81b6-b715d525e6ab",
+      "name": "Obtener Lista de Personal (DataTable)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# 🏭 Reporte DESPACHO UNION semanal - ENVIBOL\nfrom datetime import datetime, timedelta, timezone\nfrom urllib.parse import urlencode\n\nDEFAULT_CC = '591'\n\n# --- Zona horaria Bolivia ---\nTZ_BO = timezone(timedelta(hours=-4))\nahora = datetime.now(TZ_BO)\n\n# 📅 Rango semanal: últimos 7 días hasta hoy\nfecha_fin = ahora.date()\nfecha_ini = fecha_fin - timedelta(days=7)\n\nfmt_jasper = \"%Y-%m-%d\"\nfmt_legible = \"%d/%m/%Y\"\nperiodo_legible = f\"{fecha_ini.strftime(fmt_legible)} al {fecha_fin.strftime(fmt_legible)}\"\n\n# --- Jasper REST v2 ---\nJ_USER = \"sedem\"\nJ_PASS = \"123456789\"\nreport_path = \"ENVIBOL/REPORTES_DIARIOS/DESPACHO_UNION\"\n\nbase_pdf = (\n    \"http://sisub.subsidio.gob.bo:9090/jasperserver/rest_v2/reports/reports/\"\n    f\"{report_path}.pdf\"\n)\n\n# ⚙️ Parámetros correctos del reporte Jasper\nparams = {\n    \"fecha_inicio\": fecha_ini.strftime(fmt_jasper),\n    \"fecha_fin\": fecha_fin.strftime(fmt_jasper),\n    \"j_username\": J_USER,\n    \"j_password\": J_PASS,\n}\n\nlink_pdf = f\"{base_pdf}?{urlencode(params)}\"\n\ndef only_digits(s):\n    return ''.join(ch for ch in str(s) if ch.isdigit())\n\nitems_in = _input.all()\nif not items_in:\n    return []\n\nsalida = []\n\nfor item in items_in:\n    j = item.json or {}\n    nombre = j.get('Nombre') or j.get('nombre') or ''\n    numero_raw = j.get('Numero') or j.get('numero') or ''\n    numero = only_digits(numero_raw)\n\n    if not numero:\n        continue\n\n    # Normalización del número (añade +591 si hace falta)\n    if numero.startswith(DEFAULT_CC):\n        pass\n    elif len(numero) == 8 and numero[0] in ('6', '7'):\n        numero = DEFAULT_CC + numero\n    elif numero.startswith('+591'):\n        numero = numero[1:]\n\n    # 💬 Mensaje adaptado a DESPACHO UNIÓN\n    texto = (\n        \"🚛 *DESPACHOS (pendiente - despachado)* 🚚\\n\"\n        f\"📅 Período: {periodo_legible}\\n\\n\"\n        f\"*{nombre}*,\\n\\n\"\n        \"Adjunto el reporte de *Despacho Unión* correspondiente a la última semana.\\n\\n\"\n        \"*ENVIBOL* 🏭 \"\n    )\n\n    salida.append({\n        \"json\": {\n            \"number\": numero,\n            \"text\": texto,\n            \"link\": link_pdf\n        }\n    })\n\nreturn salida"
+      },
+      "id": "fa145b3d-8d10-43f3-8207-870296b7d8e3",
+      "name": "Formatear mensaje (Python)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "bc47998f-8ad7-49b4-97fb-ee85d20317e5",
+      "name": "Separar por Registro",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        736,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-document",
+        "instanceName": "dsb",
+        "remoteJid": "={{ $json.number }}",
+        "media": "={{ $json.link }}",
+        "caption": "={{ $json.text }}",
+        "fileName": "DESPACHOS_P_D.pdf",
+        "options_message": {
+          "delay": 10000
+        }
+      },
+      "id": "3c1648e8-7cb0-4b73-9354-2bfbd5427f45",
+      "name": "Enviar Reporte PDF (WhatsApp)",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        976,
+        -16
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "XJQVidx6LSBrYrny",
+          "name": "Dsbolivia"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "035a81ba-e132-475e-be7f-3013b782fc42",
+      "name": "Continuar Lote",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        -16
+      ]
+    }
+  ],
+  "connections": {
+    "Ejecutar 3 Turnos (Cron)": {
+      "main": [
+        [
+          {
+            "node": "Obtener Lista de Personal (DataTable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Lista de Personal (DataTable)": {
+      "main": [
+        [
+          {
+            "node": "Formatear mensaje (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear mensaje (Python)": {
+      "main": [
+        [
+          {
+            "node": "Separar por Registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar por Registro": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reporte PDF (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Reporte PDF (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Continuar Lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continuar Lote": {
+      "main": [
+        [
+          {
+            "node": "Separar por Registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "4951b44f-0517-40ac-b277-9ae13973d1b3",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-11T01:17:55.870Z",
+      "createdAt": "2025-11-11T01:17:55.870Z",
+      "role": "workflow:owner",
+      "workflowId": "EaO1sSNtIAFbNsil",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

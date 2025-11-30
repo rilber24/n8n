@@ -1,0 +1,286 @@
+{
+  "updatedAt": "2025-09-22T15:39:23.000Z",
+  "createdAt": "2025-09-22T15:32:05.950Z",
+  "id": "3ff9lpvoi2pZLAQr",
+  "name": "My workflow 48",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "1aec1a1f-f687-4bbc-a7cf-c9e0aca7142e",
+      "name": "Cron 15m",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Origin",
+              "value": "https://p2p.binance.com"
+            },
+            {
+              "name": "Referer",
+              "value": "https://p2p.binance.com/"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "943f250c-a8e4-4b79-88ca-4a0e6d53f604",
+      "name": "HTTP BUY",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "language": "JavaScript"
+      },
+      "id": "1d436b48-cf52-4236-8479-92f126c9929d",
+      "name": "Code in JavaScript (map BUY)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Origin",
+              "value": "https://p2p.binance.com"
+            },
+            {
+              "name": "Referer",
+              "value": "https://p2p.binance.com/"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "ea20d69e-cb29-439c-a923-9172fd30490c",
+      "name": "HTTP SELL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "language": "JavaScript"
+      },
+      "id": "b996e6a2-ece7-4580-8b82-6c1798029566",
+      "name": "Code in JavaScript (map SELL)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "755b8230-0efb-4ffb-a417-cc32463e9bd0",
+      "name": "Merge BUY+SELL",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        448,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "language": "JavaScript"
+      },
+      "id": "2f919d99-42e3-4599-828f-84563ae57083",
+      "name": "Code in JavaScript (pack payload)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH raw AS (\n  SELECT\n    btrim(d->>'advertiser_name')                    AS advertiser_name,\n    (d->>'trade_type')::p2p.trade_type_enum         AS trade_type,\n    (d->>'captured_at')::timestamptz                AS captured_at,\n    (d->>'price_bob')::numeric                      AS price_bob,\n    (d->>'available_usdt')::numeric                 AS available_usdt\n  FROM jsonb_array_elements($1::jsonb) AS d\n),\npick AS (\n  SELECT DISTINCT ON (advertiser_name, trade_type)\n         advertiser_name, trade_type, captured_at, price_bob, available_usdt\n  FROM raw\n  ORDER BY advertiser_name, trade_type, captured_at DESC\n),\nbuckets AS (\n  SELECT\n    advertiser_name,\n    trade_type,\n    captured_at,\n    price_bob,\n    available_usdt,\n    date_trunc('hour', captured_at)\n      + make_interval(mins => (floor(extract(minute from captured_at)/15)::int)*15) AS captured_15m\n  FROM pick\n)\nINSERT INTO p2p.p2p_offers_core\n  (captured_at, trade_type, advertiser_name, price_bob, available_usdt, captured_minute)\nSELECT captured_at, trade_type, advertiser_name, price_bob, available_usdt, captured_15m\nFROM buckets\nON CONFLICT ON CONSTRAINT uq_core_minute_side_name\nDO UPDATE SET\n  price_bob      = EXCLUDED.price_bob,\n  available_usdt = EXCLUDED.available_usdt,\n  captured_at    = GREATEST(p2p.p2p_offers_core.captured_at, EXCLUDED.captured_at),\n  captured_minute= EXCLUDED.captured_minute;",
+        "options": {}
+      },
+      "id": "5363f461-c302-46a0-b442-e40575ef2a1f",
+      "name": "Postgres (Execute Query, upsert 15m)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        944,
+        128
+      ]
+    }
+  ],
+  "connections": {
+    "Cron 15m": {
+      "main": [
+        [
+          {
+            "node": "HTTP BUY",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP SELL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP BUY": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript (map BUY)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP SELL": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript (map SELL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript (map BUY)": {
+      "main": [
+        [
+          {
+            "node": "Merge BUY+SELL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript (map SELL)": {
+      "main": [
+        [
+          {
+            "node": "Merge BUY+SELL",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge BUY+SELL": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript (pack payload)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript (pack payload)": {
+      "main": [
+        [
+          {
+            "node": "Postgres (Execute Query, upsert 15m)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "498fd10e-1f93-49a4-9177-34d2fc48adcb",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-22T15:32:05.956Z",
+      "createdAt": "2025-09-22T15:32:05.956Z",
+      "role": "workflow:owner",
+      "workflowId": "3ff9lpvoi2pZLAQr",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

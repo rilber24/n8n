@@ -1,0 +1,162 @@
+{
+  "updatedAt": "2025-10-20T17:36:29.000Z",
+  "createdAt": "2025-10-19T20:45:56.083Z",
+  "id": "KJCKiQpyp9vamXYj",
+  "name": "sendmsj_pss",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "93add688-d1c8-4c5d-9b3e-696bd1a8998d",
+      "name": "Disparador manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        304,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  s.usuario::text          AS usuario,\n  s.telefono::text         AS telefono,       -- si no existe, puedes omitir y usar usuario\n  s.nombre,\n  s.apellido_paterno,\n  s.apellido_materno,\n  s.municipio,\n  s.\"nombre_recinto\"       AS nombre_recinto,\n  s.estado\nFROM seg_usuario s\nWHERE s.estado = true;",
+        "options": {}
+      },
+      "id": "a07c0f84-668f-47ba-8ef0-b12a4a3551f9",
+      "name": "Postgres (leer 1 usuario)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -48
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "35H1FB0uk1gnLC70",
+          "name": "Postgres account 2"
+        }
+      },
+      "notes": "Selecciona tus **credenciales de Postgres** al importar este flujo."
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# n8n Code in Python (Beta) - Run once for all items\n# Construye {number, text, baseUrl, token} para Evolution API con tu plantilla\n# ADAPTACIÓN COMPLETA CON FILTRO PARA NÚMEROS QUE EMPIEZAN CON 6 O 7\n\nDEFAULT_CC = \"591\"  # 🇧🇴 Prefijo de país (Bolivia)\n\ndef only_digits(s: str) -> str:\n    \"\"\"Extrae solo los dígitos de una cadena.\"\"\"\n    return \"\".join(ch for ch in str(s) if ch.isdigit())\n\nitems_in = _input.all()\nif not items_in:\n    return []\n\n# Toma config opcional del primer item (si la pasas con un Set)\ncfg_src = items_in[0].json\ncc        = str(cfg_src.get(\"country_code\", DEFAULT_CC))\nbase_url  = cfg_src.get(\"evo_base_url\", \"\")\ntoken     = cfg_src.get(\"evo_token\", \"\")\ntarget    = only_digits(cfg_src.get(\"target_usuario\", \"\"))  # opcional: para enviar a uno solo\n\nout = []\nfor it in items_in:\n    r = it.json\n\n    # 1. Obtiene el número local (teléfono o usuario)\n    telefono_local = only_digits(r.get(\"telefono\") or r.get(\"usuario\") or \"\")\n    \n    # --- VALIDACIONES DE SALIDA ---\n    \n    # A. Validación: Debe tener un número\n    if not telefono_local:\n        continue\n    \n    # B. Validación: Filtro opcional por 'target'\n    if target and telefono_local != target:\n        continue\n    \n    # 🚨 C. NUEVO FILTRO: El número local (sin prefijo) debe empezar con '6' o '7' \n    # Tomamos el número SIN prefijo, o el número COMPLETO si ya tiene el prefijo.\n    # Luego verificamos que el dígito clave (el primero después del 591, o el primero si no tiene 591) sea '6' o '7'.\n    \n    # Ajustamos 'telefono_a_evaluar' para que sea el número sin el prefijo de país, si lo tiene.\n    telefono_a_evaluar = telefono_local\n    if telefono_a_evaluar.startswith(cc):\n        telefono_a_evaluar = telefono_a_evaluar[len(cc):] # Corta el '591'\n        \n    if not (telefono_a_evaluar.startswith('6') or telefono_a_evaluar.startswith('7')):\n        continue # Ignora el elemento si no empieza con 6 o 7\n    # -----------------------------\n    \n    # 2. DEFINICIÓN DE 'number' para la API (con prefijo 591)\n    number = telefono_local if telefono_local.startswith(cc) else f\"{cc}{telefono_local}\" \n\n    # 3. Variables para el mensaje\n    nombre      = (r.get(\"nombre\") or \"Participante\").strip()\n    usuario     = (r.get(\"usuario\") or telefono_local).strip()  \n    contrasena  = (r.get(\"clave\") or r.get(\"contrasena\") or \"N/A\").strip()\n    enlace_elecciones = \"https://elecciones.marcovaldivia.org/\"\n\n    # 4. Construcción del mensaje (Plantilla con Emojis)\n    texto = (\n        f\"🗳️ *Credenciales de Acceso - Elecciones* 🗳️\\n\\n\"\n        f\"¡Hola, *{nombre}*! 👋\\n\\n\"\n        f\"Ya puedes acceder a la plataforma con tus credenciales. Por favor, guárdalas de forma segura:\\n\\n\"\n        f\"👤 *Usuario:* `{usuario}`\\n\"\n        f\"🔑 *Contraseña:* `{contrasena}`\\n\\n\"\n        f\"--- \\n\"\n        f\"🔗 *Accede aquí:* 👇\\n\"\n        f\"{enlace_elecciones}\\n\"\n    )\n\n    # 5. Output para el nodo HTTP\n    out.append({\n        \"json\": {\n            \"number\": number,      # Número formateado (ej: 5917XXXXXXXX)\n            \"text\": texto,         # Mensaje final\n            \"baseUrl\": base_url,\n            \"token\": token\n        }\n    })\n\nreturn out"
+      },
+      "id": "1ba7e1e9-d282-45a7-ab8c-c1f494f4aecb",
+      "name": "Formatear mensaje (Python)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "notesInFlow": true,
+      "notes": "Texto final: \"Hola {nombre} {ap_paterno} {ap_materno}, tu contraseña es: {contraseña}.\""
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "DL",
+        "remoteJid": "={{ $json.number }}",
+        "messageText": "={{ $json.text }}",
+        "options_message": {
+          "delay": 8000
+        }
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        976,
+        0
+      ],
+      "id": "aefb37e5-e720-46cc-a6c0-6bcbda3909bb",
+      "name": "Enviar texto",
+      "credentials": {
+        "evolutionApi": {
+          "id": "XJEGvlLekyA8lBQ3",
+          "name": "dasa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    nombre,\n    telefono AS usuario, -- Renombra 'telefono' a 'usuario' para mayor claridad\n    clave     AS contrasena -- Renombra 'clave' a 'contrasena' para mayor claridad\nFROM public.vw_ciudadano_recinto\nWHERE\n    clave IS NOT NULL -- Excluye los registros que no tienen contraseña\n    AND clave != ''     -- (Opcional) Excluye los registros con contraseña vacía\n    AND telefono IS NOT NULL -- Asegura que tenemos un número de teléfono para enviar\nLIMIT 200;",
+        "options": {}
+      },
+      "id": "6937974c-a50c-416c-95f7-f6cfd6cefbef",
+      "name": "Postgres: SELECT2",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        512,
+        144
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "bXghImYW2Dg1lKZR",
+          "name": "Postgres account 3"
+        }
+      },
+      "notes": "Selecciona tu credencial 'Cuenta de Postgres 3' al importar."
+    }
+  ],
+  "connections": {
+    "Disparador manual": {
+      "main": [
+        [
+          {
+            "node": "Postgres: SELECT2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres (leer 1 usuario)": {
+      "main": [
+        []
+      ]
+    },
+    "Formatear mensaje (Python)": {
+      "main": [
+        []
+      ]
+    },
+    "Postgres: SELECT2": {
+      "main": [
+        [
+          {
+            "node": "Formatear mensaje (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "c7295327-e7fb-407e-9b3e-de1e28d78562",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-19T20:45:56.087Z",
+      "createdAt": "2025-10-19T20:45:56.087Z",
+      "role": "workflow:owner",
+      "workflowId": "KJCKiQpyp9vamXYj",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

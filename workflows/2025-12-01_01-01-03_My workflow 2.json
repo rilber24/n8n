@@ -1,0 +1,54 @@
+{
+  "updatedAt": "2025-08-28T02:28:18.000Z",
+  "createdAt": "2025-08-28T01:41:55.183Z",
+  "id": "MUnNJhc55T6hrkFr",
+  "name": "My workflow 2",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mm",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        16
+      ],
+      "id": "a860c1ee-2736-4586-a5ab-044325c0d865",
+      "name": "Webhook",
+      "webhookId": "3e005ba7-17f5-424d-baf7-f43dc7988c95"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "d16acc58-b39e-4bd0-9efb-c833e209e33d",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-08-28T01:41:55.190Z",
+      "createdAt": "2025-08-28T01:41:55.190Z",
+      "role": "workflow:owner",
+      "workflowId": "MUnNJhc55T6hrkFr",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

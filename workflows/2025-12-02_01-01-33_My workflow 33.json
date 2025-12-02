@@ -1,0 +1,349 @@
+{
+  "updatedAt": "2025-09-05T16:53:54.000Z",
+  "createdAt": "2025-09-05T16:16:56.829Z",
+  "id": "Ujm4uFp6ITiUusTV",
+  "name": "My workflow 33",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6c3a588f-d853-4158-8380-e6e514a6bc6a",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1728,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "evBaseUrl",
+              "value": "https://hooks.ril.serviciocliente.site"
+            },
+            {
+              "name": "evApiKey",
+              "value": "YOUR_API_KEY"
+            },
+            {
+              "name": "evInstance",
+              "value": "YOUR_INSTANCE"
+            },
+            {
+              "name": "areaId",
+              "value": "3"
+            },
+            {
+              "name": "batchSize",
+              "value": "30"
+            },
+            {
+              "name": "minDelaySec",
+              "value": "5"
+            },
+            {
+              "name": "maxDelaySec",
+              "value": "12"
+            },
+            {
+              "name": "dndList",
+              "value": "59111111111,59122222222"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d15188ef-cd58-484b-b9ca-fe580aca786f",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -1568,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://apirrhh.envibol.site/api/v1/N8n/Areas",
+        "options": {}
+      },
+      "id": "d5695e5b-90ea-4ab8-aa07-0325cab8d765",
+      "name": "HTTP Areas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1392,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://apirrhh.envibol.site/api/v1/N8n/GetUnidad/' + $node[\"Set Params\"].json.areaId }}",
+        "options": {}
+      },
+      "id": "f85b881b-248f-47c5-a8cf-87e1c9293c03",
+      "name": "HTTP GetUnidad",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1216,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "id": "8010b174-19f1-44b4-af36-fda316679aa1",
+      "name": "Split Out Items",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "areaName",
+              "value": "={{ (function(){const areas=($item(0).$node[\"HTTP Areas\"].json.data||[]);const id=Number($item(0).$node[\"Set Params\"].json.areaId);const a=areas.find(x=>x.idgenClasificador===id)||{};return (a.descripcion||'').trim();})() }}"
+            },
+            {
+              "name": "fullName",
+              "value": "={{ [$json.nombre,$json.apellidoPaterno||$json.apellido,$json.apellidoMaterno].filter(Boolean).join(' ').replace(/\\s+/g,' ').trim() }}"
+            },
+            {
+              "name": "number",
+              "value": "={{ String($json.celular||'').replace(/\\D/g,'') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e575fbea-e985-4b81-8a43-b48182df22f4",
+      "name": "Set Normalize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "={{ '¡Hola, ' + $json.fullName + '! 👋\\n\\n' + 'Buenos días y un excelente inicio de jornada. En ENVIBOL, valoramos mucho tu compromiso en el área de ' + $json.areaName + '. 💪' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4bd47aa9-1d9a-4e83-b6e3-5c92c460af3f",
+      "name": "Set Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        48
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f3beded7-ee3e-4493-92b6-fc2905906774",
+      "name": "Dedup + Opt-out",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "={{ Number($item(0).$node[\"Set Params\"].json.batchSize) || 30 }}",
+        "options": {}
+      },
+      "id": "80c2243c-be3e-4fce-9da4-2ca06ab897f1",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        48
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "32f831ee-a5ee-4108-92f9-d68a4e504462",
+      "name": "Delay (jitter)",
+      "type": "n8n-nodes-base.delay",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $item(0).$node[\"Set Params\"].json.evBaseUrl + '/message/sendText/' + $item(0).$node[\"Set Params\"].json.evInstance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "c54fa2b5-e3a0-42b6-9b3c-0f249bb2ea66",
+      "name": "Enviar Texto (HTTP Evolution)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "sent",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3f82218e-7fd3-41ad-949f-31769a506f5c",
+      "name": "Mark Sent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        0,
+        128
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Params": {
+      "main": [
+        [
+          {
+            "node": "HTTP Areas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Areas": {
+      "main": [
+        [
+          {
+            "node": "HTTP GetUnidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP GetUnidad": {
+      "main": [
+        [
+          {
+            "node": "Split Out Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Items": {
+      "main": [
+        [
+          {
+            "node": "Set Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Normalize": {
+      "main": [
+        [
+          {
+            "node": "Set Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Texto (HTTP Evolution)": {
+      "main": [
+        [
+          {
+            "node": "Mark Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "113dcbc9-0eec-4707-99dc-ca63ffb5e133",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-05T16:16:56.836Z",
+      "createdAt": "2025-09-05T16:16:56.836Z",
+      "role": "workflow:owner",
+      "workflowId": "Ujm4uFp6ITiUusTV",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

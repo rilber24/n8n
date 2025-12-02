@@ -1,0 +1,162 @@
+{
+  "updatedAt": "2025-09-05T02:24:25.000Z",
+  "createdAt": "2025-09-03T22:58:26.631Z",
+  "id": "M6oyHcAh6TkmK2Pv",
+  "name": "My workflow 15",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b283c04a-1a8b-4e78-a2df-350dcfd085d2",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "evBase",
+              "value": "https://hooks.ril.serviciocliente.site"
+            },
+            {
+              "name": "evInstance",
+              "value": "mm"
+            },
+            {
+              "name": "evApiKey",
+              "value": "YOUR_API_KEY_HERE"
+            },
+            {
+              "name": "message",
+              "value": "Hola, {{fullName}}. 🔔 Comunicado área {{areaId}} a las 10:30."
+            },
+            {
+              "name": "mediaUrl"
+            },
+            {
+              "name": "fileName",
+              "value": "aviso.pdf"
+            },
+            {
+              "name": "operatorTo",
+              "value": "59172896612"
+            },
+            {
+              "name": "overrideTo"
+            }
+          ],
+          "number": [
+            {
+              "name": "areaId",
+              "value": 3
+            },
+            {
+              "name": "delaySeconds",
+              "value": 0.6
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eae25439-94e2-41a3-aa24-a08faffb4a55",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7d35dcd0-a483-409f-957a-0767b7e5cdf6",
+      "name": "Load People (Mock)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4499adcd-f826-4c5b-aabf-4af5c19201f6",
+      "name": "Function Expand",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        608,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{$json.urlSendText}}",
+        "jsonParameters": true,
+        "options": {
+          "fullResponse": true
+        },
+        "bodyParametersJson": "={{ JSON.stringify({ to: ($json.to||'').toString().trim(), message: ($json.message||'').toString().replace(/\\s+/g,' ').trim(), areaId: $json.areaId ?? '', fullName: ($json.fullName||'').toString().replace(/\\s+/g,' ').trim(), ci: $json.ci ?? '', broadcastId: $json.broadcastId }) }}"
+      },
+      "id": "80a84c86-85eb-4251-b34e-4ed94e1e4316",
+      "name": "Send Text (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1a357b1c-01f1-41cb-9220-f5141c7936db",
+      "name": "Function Tally",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "7d518289-99e5-4a44-9693-fab12303507e",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-03T22:58:26.637Z",
+      "createdAt": "2025-09-03T22:58:26.637Z",
+      "role": "workflow:owner",
+      "workflowId": "M6oyHcAh6TkmK2Pv",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}

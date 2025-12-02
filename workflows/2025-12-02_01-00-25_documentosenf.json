@@ -1,0 +1,328 @@
+{
+  "updatedAt": "2025-10-15T22:30:19.000Z",
+  "createdAt": "2025-09-04T20:49:58.145Z",
+  "id": "7lLHTqukGDrp4ix8",
+  "name": "documentosenf",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "58bac82c-8c54-4dc0-9d29-f8227dc9e0cb",
+      "name": "Disparador manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "evBase",
+              "value": "https://hooks.ril.serviciocliente.site"
+            },
+            {
+              "name": "evInstance",
+              "value": "mm"
+            },
+            {
+              "name": "evApikey",
+              "value": "471D0C16CA24-4397-A5EE-F596DB01669E"
+            },
+            {
+              "name": "to",
+              "value": "59172896612"
+            },
+            {
+              "name": "message",
+              "value": "Prueba con Evolution node ✅"
+            },
+            {
+              "name": "mediaUrl",
+              "value": "https://definicion.com/wp-content/uploads/2022/09/imagen-caracteristicas-1280x853.jpg"
+            },
+            {
+              "name": "fileName"
+            },
+            {
+              "name": "modo",
+              "value": "={{$json.modo || ($json.mediaUrl ? ($json.fileName ? 'document' : 'image') : 'text')}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "delaySeconds",
+              "value": 0.8
+            }
+          ]
+        },
+        "options": {
+          "dotNotation": true
+        }
+      },
+      "id": "df24c2c6-454a-4c89-aade-27b1c0475698",
+      "name": "Set (normalización)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{$json.mediaUrl}}",
+        "options": {}
+      },
+      "id": "759092ed-dd36-4920-a0ae-08627a70b44e",
+      "name": "HEAD mediaUrl",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -496,
+        128
+      ],
+      "notesInFlow": true,
+      "notes": "Hace una petición HEAD a mediaUrl para detectar el Content-Type.\nSi mediaUrl está vacío/indefinido, este nodo fallará. En ese caso, usa el camino de *Enviar texto* o agrega un IF previo que valide la URL."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "6d1e914f-e234-43e7-a58a-d9dd3dd8f26d",
+              "leftValue": "={{ ($binary.data.mimeType ?? $json.headers['content-type'] ?? '').toLowerCase() }}",
+              "rightValue": "image/",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "531eebb6-1c40-4762-83dd-15cbfcadf010",
+      "name": "IF imagen",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1545658f-6520-4a68-a0cb-22446166b6a5",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9c4e603a-306d-4cf9-a84a-457454f6233d",
+      "name": "IF documento",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-image",
+        "instanceName": "={{ $('Set (normalización)').item.json.evInstance }}",
+        "remoteJid": "={{ $('Set (normalización)').item.json.to }}",
+        "media": "={{ $('HEAD mediaUrl').item.json.mediaUrl }}",
+        "caption": "={{$json.message || ''}}",
+        "options_message": {}
+      },
+      "id": "b50658ad-341b-4b32-8a28-cdac0976cdb8",
+      "name": "Evolution API: Enviar imagen",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        96
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "mmmmm"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "send-document",
+        "instanceName": "mm",
+        "remoteJid": "={{ $json.to }}",
+        "media": "={{ $json.mediaUrl }}",
+        "caption": "={{$json.message || ''}}",
+        "fileName": "={{$json.fileName || 'documento.pdf'}}",
+        "options_message": {}
+      },
+      "id": "e5fc9c88-c3f6-455c-9aef-865345f97710",
+      "name": "Evolution API: Enviar documento",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        192,
+        192
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "mmmmm"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "remoteJid": "={{ $('Set (normalización)').item.json.to }}",
+        "messageText": "={{ $execution.resumeUrl }}",
+        "options_message": {}
+      },
+      "id": "bce3d31d-ee2a-4ea1-b19b-911a69cf761e",
+      "name": "Evolution API: Enviar texto",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        208,
+        400
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "evolutionApi": {
+          "id": "s2n2zPD1AmMnozJl",
+          "name": "mmmmm"
+        }
+      },
+      "notes": "Camino de texto (por ejemplo si 'modo' es 'text' o si mediaUrl no es válido)."
+    }
+  ],
+  "connections": {
+    "Disparador manual": {
+      "main": [
+        [
+          {
+            "node": "Set (normalización)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set (normalización)": {
+      "main": [
+        [
+          {
+            "node": "HEAD mediaUrl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HEAD mediaUrl": {
+      "main": [
+        [
+          {
+            "node": "IF imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF imagen": {
+      "main": [
+        [
+          {
+            "node": "Evolution API: Enviar imagen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF documento": {
+      "main": [
+        [
+          {
+            "node": "Evolution API: Enviar documento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Evolution API: Enviar texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "f5300a17-f64e-4704-a818-9e5e8ffff1e8",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-09-04T20:49:58.149Z",
+      "createdAt": "2025-09-04T20:49:58.149Z",
+      "role": "workflow:owner",
+      "workflowId": "7lLHTqukGDrp4ix8",
+      "projectId": "DLCF6dMNvaWDIOVx"
+    }
+  ],
+  "tags": []
+}
